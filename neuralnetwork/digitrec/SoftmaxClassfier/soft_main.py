@@ -2,42 +2,43 @@ import numpy as np
 from scipy.io import loadmat
 
 
-class DataPrecessing(object):
-    def loadFile(self):
-        # 加载数据文件
-        data = loadmat('mnist-original.mat')
-        # 提取数据的特征矩阵，并进行转置，将二维数组转换为一维数组的形式
-        x = data['data']
-        x = x.transpose()
-        # 然后将特征除以255.0，以浮点数的形式重新缩放到[0,1]的范围内，以避免在计算过程中溢出
-        x = x / 255.0
-        # 从数据中提取labels，即x数字像素对应的数字类别y
-        y = data['label']
-        y = y.flatten()
-        # 将数据分割为60,000个训练集
-        x_train = x[:60000, :]
-        y_train = y[:60000]
-        # 和10,000个测试集
-        x_test = x[60000:, :]
-        y_test = y[60000:]
+def loadFile():
+    # 加载数据文件
+    data = loadmat('mnist-original.mat')
+    # 提取数据的特征矩阵，并进行转置，将二维数组转换为一维数组的形式
+    x = data['data']
+    x = x.transpose()
+    # 然后将特征除以255.0，以浮点数的形式重新缩放到[0,1]的范围内，以避免在计算过程中溢出
+    x = x / 255.0
+    # 从数据中提取labels，即x数字像素对应的数字类别y
+    y = data['label']
+    y = y.flatten()
+    # 将数据分割为60,000个训练集
+    x_train = x[:60000, :]
+    y_train = y[:60000]
+    # 和10,000个测试集
+    x_test = x[60000:, :]
+    y_test = y[60000:]
 
-        y_train = y_train[::-1].reshape(1, -1)
-        y_test = y_test[::-1].reshape(1, -1)
-        y_train = y_train[::-1].reshape(1, -1).astype(int)
-        y_test = y_test[::-1].reshape(1, -1).astype(int)
+    y_train = y_train[::-1].reshape(1, -1)
+    y_test = y_test[::-1].reshape(1, -1)
+    y_train = y_train[::-1].reshape(1, -1).astype(int)
+    y_test = y_test[::-1].reshape(1, -1).astype(int)
 
-        return x_train, y_train, x_test, y_test
+    return x_train, y_train, x_test, y_test
 
-    def Calculate_accuracy(self, target, prediction):
-        score = 0
-        for i in range(len(target)):
-            if target[i] == prediction[i]:
-                score += 1
-        return score / len(target)
 
-    def predict(self, test, weights):
-        h = test * weights
-        return h.argmax(axis=1)
+def Calculate_accuracy(target, prediction):
+    score = 0
+    for i in range(len(target)):
+        if target[i] == prediction[i]:
+            score += 1
+    return score / len(target)
+
+
+def predict(test, weights):
+    h = test * weights
+    return h.argmax(axis=1)
 
 
 def gradientAscent(feature_data, label_data, k, maxCycle, alpha):
@@ -48,8 +49,7 @@ def gradientAscent(feature_data, label_data, k, maxCycle, alpha):
     maxCycle 最大迭代次数
     alpha 学习率
     """
-    Dataprecessing = DataPrecessing()
-    x_train, y_train, x_test, y_test = Dataprecessing.loadFile()
+    x_train, y_train, x_test, y_test = loadFile()
     y_train = y_train.tolist()[0]
     y_test = y_test.tolist()[0]
     m, n = np.shape(feature_data)
@@ -59,10 +59,10 @@ def gradientAscent(feature_data, label_data, k, maxCycle, alpha):
         err = np.exp(feature_data * weights)
         if i % 100 == 0:
             print('cost score : ', cost(err, label_data))
-            train_predict = Dataprecessing.predict(x_train, weights)
-            test_predict = Dataprecessing.predict(x_test, weights)
-            print('Train_accuracy : ', Dataprecessing.Calculate_accuracy(y_train, train_predict))
-            print('Test_accuracy : ', Dataprecessing.Calculate_accuracy(y_test, test_predict))
+            train_predict = predict(x_train, weights)
+            test_predict = predict(x_test, weights)
+            print('Train_accuracy : ', Calculate_accuracy(y_train, train_predict))
+            print('Test_accuracy : ', Calculate_accuracy(y_test, test_predict))
         rowsum = -err.sum(axis=1)
         rowsum = rowsum.repeat(k, axis=1)
         err = err / rowsum
@@ -84,7 +84,6 @@ def cost(err, label_data):
     return sum_cost / m
 
 
-Dataprecessing = DataPrecessing()
-x_train, y_train, x_test, y_test = Dataprecessing.loadFile()
+x_train, y_train, x_test, y_test = loadFile()
 y_train = y_train.tolist()[0]
 gradientAscent(x_train, y_train, 10, 100000, 0.001)
