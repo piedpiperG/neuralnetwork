@@ -37,8 +37,25 @@ def neural_network(nn_params, input_layer_size, hidden_layer_size, num_labels, X
         y_vect[i, int(y[i])] = 1
 
     # 计算损失值
-    J = (1 / m) * (np.sum(np.sum(-y_vect * np.log(a3) - (1 - y_vect) * np.log(1 - a3)))) + (lamb / (2 * m)) * (
-            sum(sum(pow(Theta1[:, 1:], 2))) + sum(sum(pow(Theta2[:, 1:], 2))))
+    # 正则化方法选择
+    # L2正则化
+    L2_Reg = (lamb / (2 * m)) * (
+            np.sum(np.square(Theta1[:, 1:])) + np.sum(np.square(Theta2[:, 1:])))
+    # L1正则化
+    L1_Reg = (lamb / (2 * m)) * (
+            np.sum(np.abs(Theta1[:, 1:])) + np.sum(np.abs(Theta2[:, 1:]))
+    )
+    Reg = L2_Reg
+    # 交叉熵损失（Cross-Entropy Loss）
+    J = (1 / m) * (np.sum(np.sum(-y_vect * np.log(a3) - (1 - y_vect) * np.log(1 - a3)))) + Reg
+    # 均方误差损失（Mean Squared Error Loss）
+    J = (1 / (2 * m)) * np.sum(np.sum(np.square(a3 - y_vect))) + Reg
+    # Hinge Loss（合页损失，用于支持向量机等）
+    J = (1 / m) * np.sum(np.maximum(0, 1 - (2 * y_vect - 1) * a3)) + Reg
+    #  Huber Loss（用于回归问题的平滑损失）
+    delta = 1.0  # 控制损失函数的平滑度
+    J = (1 / m) * np.sum(
+        np.where(np.abs(a3 - y_vect) < delta, 0.5 * np.square(a3 - y_vect), delta * np.abs(a3 - y_vect))) + Reg
 
     # 向后传播
     Delta3 = a3 - y_vect
@@ -68,6 +85,61 @@ def predict(Theta1, Theta2, X):
     a3 = 1 / (1 + np.exp(-z3))  # 激活第三层
     p = (np.argmax(a3, axis=1))  # 输出预测的分类
     return p
+
+
+def BGD(nn_params, input_layer_size, hidden_layer_size, num_labels, X, y, lambda_reg, iter_num, alpha_rate):
+    for i in range(iter_num):
+        cost, grad = neural_network(initial_nn_params, input_layer_size, hidden_layer_size, num_labels, X,
+                                    y, lambda_reg)
+        nn_params -= alpha_rate * grad
+        if (i % 10) == 0:
+            print(f"Iteration {i}: Cost {cost}")
+    return nn_params
+
+
+def OGD(nn_params, input_layer_size, hidden_layer_size, num_labels, x, y, lambda_reg, iter_num,
+        alpha_rate):
+    for i in range(iter_num):
+        for j in range(x.shape[0]):
+            x_sample = x[j, :].reshape(1, -1)
+            y_sample = y[j]
+            cost, grad = neural_network(nn_params, input_layer_size, hidden_layer_size, num_labels, x_sample,
+                                        y_sample, lambda_reg)
+            nn_params -= alpha_rate * grad
+        if (i % 10) == 0:
+            print(f"Iteration {i}: Cost {cost}")
+    return nn_params
+
+
+def MiniBGD(nn_params, input_layer_size, hidden_layer_size, num_labels, x, y, lambda_reg, iter_num,
+            alpha_rate):
+    batch_size = 32  # 指定批量大小
+    for i in range(iter_num):
+        for j in range(0, x.shape[0], batch_size):
+            x_batch = x[j:j + batch_size, :]
+            y_batch = y[j:j + batch_size]
+            cost, grad = neural_network(nn_params, input_layer_size, hidden_layer_size, num_labels, x_batch,
+                                        y_batch, lambda_reg)
+            nn_params -= alpha_rate * grad
+        if (i % 10) == 0:
+            print(f"Iteration {i}: Cost {cost}")
+    return nn_params
+
+
+def SGD(nn_params, input_layer_size, hidden_layer_size, num_labels, x, y, lambda_reg, iter_num,
+        alpha_rate):
+    for i in range(iter_num):
+        indices = np.arange(x.shape[0])
+        np.random.shuffle(indices)
+        for j in indices:
+            x_sample = x[j, :].reshape(1, -1)
+            y_sample = y[j]
+            cost, grad = neural_network(nn_params, input_layer_size, hidden_layer_size, num_labels, x_sample,
+                                        y_sample, lambda_reg)
+            nn_params -= alpha_rate * grad
+        if (i % 10) == 0:
+            print(f"Iteration {i}: Cost {cost}")
+    return nn_params
 
 
 '''
@@ -102,19 +174,15 @@ initial_Theta2 = initialise(num_labels, hidden_layer_size)  # 隐藏层和输出
 # 设置神经网络的参数
 initial_nn_params = np.concatenate((initial_Theta1.flatten(), initial_Theta2.flatten()))
 lambda_reg = 0.1  # 避免过拟合
-myargs = (input_layer_size, hidden_layer_size, num_labels, X_train, y_train, lambda_reg)
 '''
 进行神经网络的训练
 '''
 # 设置学习率和迭代次数
 alpha = 0.1
-max_iter = 100
-# 梯度下降训练神经网络
-for i in range(max_iter):
-    cost, grad = neural_network(initial_nn_params, *myargs)
-    initial_nn_params -= alpha * grad
-    if (i % 10) == 0:
-        print(f"Iteration {i}: Cost {cost}")
+max_iter = 50
+# 批量梯度下降训练神经网络(BGD)
+initial_nn_params = OGD(initial_nn_params, input_layer_size, hidden_layer_size, num_labels, X_train, y_train,
+                        lambda_reg, max_iter, alpha)
 
 # 重新分割，获得三个层次之间两两的权重
 Theta1 = np.reshape(initial_nn_params[:hidden_layer_size * (input_layer_size + 1)], (
