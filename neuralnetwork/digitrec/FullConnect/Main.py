@@ -27,7 +27,6 @@ y_train = y[:60000]
 X_test = X[60000:, :]
 y_test = y[60000:]
 
-# m = X.shape[0]
 input_layer_size = 784  # 图片大小为 (28 X 28) px 所以设置784个特征
 hidden_layer_size = 100
 num_labels = 10  # 拥有十个标准为 [0, 9] 十个数字
