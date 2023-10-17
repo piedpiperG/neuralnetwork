@@ -49,13 +49,13 @@ def neural_network(nn_params, input_layer_size, hidden_layer_size, num_labels, X
     # 交叉熵损失（Cross-Entropy Loss）
     J = (1 / m) * (np.sum(np.sum(-y_vect * np.log(a3) - (1 - y_vect) * np.log(1 - a3)))) + Reg
     # 均方误差损失（Mean Squared Error Loss）
-    J = (1 / (2 * m)) * np.sum(np.sum(np.square(a3 - y_vect))) + Reg
-    # Hinge Loss（合页损失，用于支持向量机等）
-    J = (1 / m) * np.sum(np.maximum(0, 1 - (2 * y_vect - 1) * a3)) + Reg
-    #  Huber Loss（用于回归问题的平滑损失）
-    delta = 1.0  # 控制损失函数的平滑度
-    J = (1 / m) * np.sum(
-        np.where(np.abs(a3 - y_vect) < delta, 0.5 * np.square(a3 - y_vect), delta * np.abs(a3 - y_vect))) + Reg
+    # J = (1 / (2 * m)) * np.sum(np.sum(np.square(a3 - y_vect))) + Reg
+    # # Hinge Loss（合页损失，用于支持向量机等）
+    # J = (1 / m) * np.sum(np.maximum(0, 1 - (2 * y_vect - 1) * a3)) + Reg
+    # #  Huber Loss（用于回归问题的平滑损失）
+    # delta = 1.0  # 控制损失函数的平滑度
+    # J = (1 / m) * np.sum(
+    #     np.where(np.abs(a3 - y_vect) < delta, 0.5 * np.square(a3 - y_vect), delta * np.abs(a3 - y_vect))) + Reg
 
     # 向后传播
     Delta3 = a3 - y_vect
@@ -97,101 +97,110 @@ def BGD(nn_params, input_layer_size, hidden_layer_size, num_labels, X, y, lambda
     return nn_params
 
 
-def OGD(nn_params, input_layer_size, hidden_layer_size, num_labels, x, y, lambda_reg, iter_num,
-        alpha_rate):
+def OGD(nn_params, input_layer_size, hidden_layer_size, num_labels, x, y, lambda_reg, iter_num, alpha_rate):
     for i in range(iter_num):
+        total_cost = 0  # 用于计算每次迭代的总损失
         for j in range(x.shape[0]):
             x_sample = x[j, :].reshape(1, -1)
             y_sample = y[j]
-            cost, grad = neural_network(nn_params, input_layer_size, hidden_layer_size, num_labels, x_sample,
-                                        y_sample, lambda_reg)
+            y_sample = y_sample.flatten()
+            cost, grad = neural_network(nn_params, input_layer_size, hidden_layer_size, num_labels, x_sample, y_sample,
+                                        lambda_reg)
+            # 更新参数
             nn_params -= alpha_rate * grad
+            total_cost += cost  # 累积每次迭代的损失
         if (i % 10) == 0:
-            print(f"Iteration {i}: Cost {cost}")
+            print(f"Iteration {i}: Average Cost {total_cost / x.shape[0]}")
     return nn_params
 
 
 def MiniBGD(nn_params, input_layer_size, hidden_layer_size, num_labels, x, y, lambda_reg, iter_num,
             alpha_rate):
     batch_size = 32  # 指定批量大小
+    nn_params_copy = nn_params
     for i in range(iter_num):
+        total_cost = 0  # 用于计算每次迭代的总损失
         for j in range(0, x.shape[0], batch_size):
             x_batch = x[j:j + batch_size, :]
             y_batch = y[j:j + batch_size]
-            cost, grad = neural_network(nn_params, input_layer_size, hidden_layer_size, num_labels, x_batch,
+            cost, grad = neural_network(nn_params_copy, input_layer_size, hidden_layer_size, num_labels, x_batch,
                                         y_batch, lambda_reg)
-            nn_params -= alpha_rate * grad
+            nn_params_copy -= alpha_rate * grad
+            total_cost += cost  # 累积每次迭代的损失
         if (i % 10) == 0:
-            print(f"Iteration {i}: Cost {cost}")
-    return nn_params
+            print(f"Iteration {i}: Average Cost {total_cost / x.shape[0]}")
+    return nn_params_copy
 
 
 def SGD(nn_params, input_layer_size, hidden_layer_size, num_labels, x, y, lambda_reg, iter_num,
         alpha_rate):
+    nn_params_copy = nn_params
     for i in range(iter_num):
         indices = np.arange(x.shape[0])
         np.random.shuffle(indices)
         for j in indices:
             x_sample = x[j, :].reshape(1, -1)
             y_sample = y[j]
-            cost, grad = neural_network(nn_params, input_layer_size, hidden_layer_size, num_labels, x_sample,
+            y_sample = y_sample.flatten()
+            cost, grad = neural_network(nn_params_copy, input_layer_size, hidden_layer_size, num_labels, x_sample,
                                         y_sample, lambda_reg)
-            nn_params -= alpha_rate * grad
+            nn_params_copy -= alpha_rate * grad
         if (i % 10) == 0:
             print(f"Iteration {i}: Cost {cost}")
-    return nn_params
+    return nn_params_copy
 
 
-'''
-导入数据集，划分为60，000个训练样本，10，000个测试样本
-'''
-# 加载数据文件
-data = loadmat('mnist-original.mat')
-# 提取数据的特征矩阵，并进行转置
-X = data['data']
-X = X.transpose()
-# 然后将特征除以255，重新缩放到[0,1]的范围内，以避免在计算过程中溢出
-X = X / 255
-# 从数据中提取labels
-y = data['label']
-y = y.flatten()
-# 将数据分割为60,000个训练集
-X_train = X[:60000, :]
-y_train = y[:60000]
-# 和10,000个测试集
-X_test = X[60000:, :]
-y_test = y[60000:]
-'''
-构建三层全连接神经网络的参数
-'''
-# 输入层，隐藏层，输出层节点个数
-input_layer_size = 784  # 图片大小为 (28 X 28) px 所以设置784个特征
-hidden_layer_size = 100
-num_labels = 10  # 拥有十个标准为 [0, 9] 十个数字
-# 初始化层之间的权重 Thetas
-initial_Theta1 = initialise(hidden_layer_size, input_layer_size)  # 输入层和隐藏层之间的权重
-initial_Theta2 = initialise(num_labels, hidden_layer_size)  # 隐藏层和输出层之间的权重
-# 设置神经网络的参数
-initial_nn_params = np.concatenate((initial_Theta1.flatten(), initial_Theta2.flatten()))
-lambda_reg = 0.1  # 避免过拟合
-'''
-进行神经网络的训练
-'''
-# 设置学习率和迭代次数
-alpha = 0.1
-max_iter = 50
-# 批量梯度下降训练神经网络(BGD)
-initial_nn_params = OGD(initial_nn_params, input_layer_size, hidden_layer_size, num_labels, X_train, y_train,
-                        lambda_reg, max_iter, alpha)
+if __name__ == '__main__':
+    '''
+    导入数据集，划分为60，000个训练样本，10，000个测试样本
+    '''
+    # 加载数据文件
+    data = loadmat('mnist-original.mat')
+    # 提取数据的特征矩阵，并进行转置
+    X = data['data']
+    X = X.transpose()
+    # 然后将特征除以255，重新缩放到[0,1]的范围内，以避免在计算过程中溢出
+    X = X / 255
+    # 从数据中提取labels
+    y = data['label']
+    y = y.flatten()
+    # 将数据分割为60,000个训练集
+    X_train = X[:60000, :]
+    y_train = y[:60000]
+    # 和10,000个测试集
+    X_test = X[60000:, :]
+    y_test = y[60000:]
+    '''
+    构建三层全连接神经网络的参数
+    '''
+    # 输入层，隐藏层，输出层节点个数
+    input_layer_size = 784  # 图片大小为 (28 X 28) px 所以设置784个特征
+    hidden_layer_size = 100
+    num_labels = 10  # 拥有十个标准为 [0, 9] 十个数字
+    # 初始化层之间的权重 Thetas
+    initial_Theta1 = initialise(hidden_layer_size, input_layer_size)  # 输入层和隐藏层之间的权重
+    initial_Theta2 = initialise(num_labels, hidden_layer_size)  # 隐藏层和输出层之间的权重
+    # 设置神经网络的参数
+    initial_nn_params = np.concatenate((initial_Theta1.flatten(), initial_Theta2.flatten()))
+    lambda_reg = 0.1  # 避免过拟合
+    '''
+    进行神经网络的训练
+    '''
+    # 设置学习率和迭代次数
+    alpha = 0.5
+    max_iter = 50
+    # 训练神经网络，根据函数选择优化方法
+    initial_nn_params = BGD(initial_nn_params, input_layer_size, hidden_layer_size, num_labels, X_train, y_train,
+                            lambda_reg, max_iter, alpha)
 
-# 重新分割，获得三个层次之间两两的权重
-Theta1 = np.reshape(initial_nn_params[:hidden_layer_size * (input_layer_size + 1)], (
-    hidden_layer_size, input_layer_size + 1))  # shape = (100, 785)
-Theta2 = np.reshape(initial_nn_params[hidden_layer_size * (input_layer_size + 1):],
-                    (num_labels, hidden_layer_size + 1))  # shape = (10, 101)
-# 测试集的准确度
-pred = predict(Theta1, Theta2, X_test)
-print('Test Set Accuracy: {:f}'.format((np.mean(pred == y_test) * 100)))
-# 训练集的准确度
-pred = predict(Theta1, Theta2, X_train)
-print('Training Set Accuracy: {:f}'.format((np.mean(pred == y_train) * 100)))
+    # 重新分割，获得三个层次之间两两的权重
+    Theta1 = np.reshape(initial_nn_params[:hidden_layer_size * (input_layer_size + 1)], (
+        hidden_layer_size, input_layer_size + 1))  # shape = (100, 785)
+    Theta2 = np.reshape(initial_nn_params[hidden_layer_size * (input_layer_size + 1):],
+                        (num_labels, hidden_layer_size + 1))  # shape = (10, 101)
+    # 测试集的准确度
+    pred = predict(Theta1, Theta2, X_test)
+    print('Test Set Accuracy: {:f}'.format((np.mean(pred == y_test) * 100)))
+    # 训练集的准确度
+    pred = predict(Theta1, Theta2, X_train)
+    print('Training Set Accuracy: {:f}'.format((np.mean(pred == y_train) * 100)))
