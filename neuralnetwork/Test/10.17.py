@@ -129,7 +129,7 @@ class neuralNetwork:
                 self.w2 -= self.lr * dw2
                 self.b2 -= self.lr * db2
                 # 打印每个epoch的损失
-                print(f'Epoch {epoch + 1}/{epochs}, Loss: {loss:.4f}')
+                print(f'Epoch {i}/{epoch}, Loss: {loss:.4f}')
 
 
 inputnodes = 784
