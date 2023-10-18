@@ -15,12 +15,12 @@ def BGD(nn_params, input_layer_size, hidden_layer_size, num_labels, X, y, lambda
         cost, grad = neural_network(nn_params, input_layer_size, hidden_layer_size, num_labels, X,
                                     y, lambda_reg)
         nn_params -= alpha_rate * grad
+        loss_history.append(cost)
+        accuracy_history.append(accuracy(nn_params, input_layer_size, hidden_layer_size, num_labels, X, y))
         if (i % 10) == 0:
             print(f"Iteration {i}: Cost {cost}")
             print('Training Set Accuracy: {:f}'.format(
                 accuracy(nn_params, input_layer_size, hidden_layer_size, num_labels, X, y)))
-            loss_history.append(cost)
-            accuracy_history.append(accuracy(nn_params, input_layer_size, hidden_layer_size, num_labels, X, y))
     plot_loss_and_accuracy(loss_history, accuracy_history)
     return nn_params
 
@@ -101,13 +101,13 @@ def MiniBGD(nn_params, input_layer_size, hidden_layer_size, num_labels, X, y, la
             cost, grad = neural_network(nn_params, input_layer_size, hidden_layer_size, num_labels, X_batch, y_batch,
                                         lambda_reg)
             nn_params -= alpha_rate * grad
-
+        loss_history.append(cost)
+        accuracy_history.append(accuracy(nn_params, input_layer_size, hidden_layer_size, num_labels, X, y))
         if (i % 10) == 0:
             print(f"Iteration {i}: Cost {cost}")
             print('Training Set Accuracy: {:f}'.format(
                 accuracy(nn_params, input_layer_size, hidden_layer_size, num_labels, X, y)))
-            loss_history.append(cost)
-            accuracy_history.append(accuracy(nn_params, input_layer_size, hidden_layer_size, num_labels, X, y))
+
     plot_loss_and_accuracy(loss_history, accuracy_history)
 
     return nn_params
@@ -128,13 +128,13 @@ def Momentum(nn_params, input_layer_size, hidden_layer_size, num_labels, X, y, l
 
         # 更新参数
         nn_params -= v
-
+        loss_history.append(cost)
+        accuracy_history.append(accuracy(nn_params, input_layer_size, hidden_layer_size, num_labels, X, y))
         if (i % 10) == 0:
             print(f"Iteration {i}: Cost {cost}")
             print('Training Set Accuracy: {:f}'.format(
                 accuracy(nn_params, input_layer_size, hidden_layer_size, num_labels, X, y)))
-            loss_history.append(cost)
-            accuracy_history.append(accuracy(nn_params, input_layer_size, hidden_layer_size, num_labels, X, y))
+
     plot_loss_and_accuracy(loss_history, accuracy_history)
     return nn_params
 
@@ -157,14 +157,14 @@ def Adagrad(nn_params, input_layer_size, hidden_layer_size, num_labels, X, y, la
 
         # 更新参数
         nn_params -= alpha * grad
-
+        loss_history.append(cost)
+        accuracy_history.append(accuracy(nn_params, input_layer_size, hidden_layer_size, num_labels, X, y))
         if (i % 10) == 0:
             print(f"Iteration {i}: Cost {cost}")
             print('Training Set Accuracy: {:f}'.format(
                 accuracy(nn_params, input_layer_size, hidden_layer_size, num_labels, X, y)))
             # 记录损失和准确度
-            loss_history.append(cost)
-            accuracy_history.append(accuracy(nn_params, input_layer_size, hidden_layer_size, num_labels, X, y))
+
     plot_loss_and_accuracy(loss_history, accuracy_history)
     return nn_params
 
@@ -198,14 +198,14 @@ def Adam(nn_params, input_layer_size, hidden_layer_size, num_labels, X, y, lambd
 
         # 更新参数
         nn_params -= alpha * m_hat
-
+        loss_history.append(cost)
+        accuracy_history.append(accuracy(nn_params, input_layer_size, hidden_layer_size, num_labels, X, y))
         if (i % 10) == 0:
             print(f"Iteration {i}: Cost {cost}")
             print('Training Set Accuracy: {:f}'.format(
                 accuracy(nn_params, input_layer_size, hidden_layer_size, num_labels, X, y)))
             # 记录损失和准确度
-            loss_history.append(cost)
-            accuracy_history.append(accuracy(nn_params, input_layer_size, hidden_layer_size, num_labels, X, y))
+
     plot_loss_and_accuracy(loss_history, accuracy_history)
     return nn_params
 
@@ -234,14 +234,14 @@ def Adamax(nn_params, input_layer_size, hidden_layer_size, num_labels, X, y, lam
 
         # 更新参数
         nn_params -= alpha * m
-
+        # 记录损失和准确度
+        loss_history.append(cost)
+        accuracy_history.append(accuracy(nn_params, input_layer_size, hidden_layer_size, num_labels, X, y))
         if (i % 10) == 0:
             print(f"Iteration {i}: Cost {cost}")
             print('Training Set Accuracy: {:f}'.format(
                 accuracy(nn_params, input_layer_size, hidden_layer_size, num_labels, X, y)))
-            # 记录损失和准确度
-            loss_history.append(cost)
-            accuracy_history.append(accuracy(nn_params, input_layer_size, hidden_layer_size, num_labels, X, y))
+
     plot_loss_and_accuracy(loss_history, accuracy_history)
 
     return nn_params

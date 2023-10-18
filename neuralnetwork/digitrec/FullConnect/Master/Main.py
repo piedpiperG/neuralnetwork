@@ -1,5 +1,4 @@
 from scipy.io import loadmat
-import numpy as np
 from Method import initialise, predict
 from Optim import *
 
@@ -43,7 +42,7 @@ if __name__ == '__main__':
     '''
     # 设置学习率和迭代次数
     alpha = 0.1
-    max_iter = 200
+    max_iter = 100
     # 训练神经网络，根据函数选择优化方法
     initial_nn_params = BGD(initial_nn_params, input_layer_size, hidden_layer_size, num_labels, X_train, y_train,
                             lambda_reg, max_iter, alpha)
