@@ -111,7 +111,7 @@ def SGD(nn_params, input_layer_size, hidden_layer_size, num_labels, X, y, lambda
     for i in range(iter_num):
         indices = list(range(m))
         random.shuffle(indices)
-
+        totalcost = 0
         for j in range(0, m, batch_size):
             batch_indices = indices[j:j + batch_size]
             X_batch = X[batch_indices]
@@ -120,10 +120,9 @@ def SGD(nn_params, input_layer_size, hidden_layer_size, num_labels, X, y, lambda
             cost, grad = neural_network(nn_params, input_layer_size, hidden_layer_size, num_labels, X_batch, y_batch,
                                         lambda_reg)
             nn_params -= alpha_rate * grad
-            print(f"Iteration {j}/{i}: Cost {cost}")
+            totalcost += cost
+        print(f"Iteration {i}: Cost {totalcost/m}")
 
-        if (i % 10) == 0:
-            print(f"Iteration {i}: Cost {cost}")
     return nn_params
 
 
@@ -132,7 +131,7 @@ def OGD(nn_params, input_layer_size, hidden_layer_size, num_labels, X, y, lambda
     m = X.shape[0]
     for i in range(iter_num):
         indices = list(range(m))
-
+        totalcost = 0
         for j in range(0, m, batch_size):
             batch_indices = indices[j:j + batch_size]
             X_batch = X[batch_indices]
@@ -140,10 +139,11 @@ def OGD(nn_params, input_layer_size, hidden_layer_size, num_labels, X, y, lambda
 
             cost, grad = neural_network(nn_params, input_layer_size, hidden_layer_size, num_labels, X_batch, y_batch,
                                         lambda_reg)
+            totalcost += cost
             nn_params -= alpha_rate * grad
-            print(f"Iteration {j}/{i}: Cost {cost}")
-        if (i % 10) == 0:
-            print(f"Iteration {i}: Cost {cost}")
+    print(f"Iteration {i}: Cost {totalcost/m}")
+
+
     return nn_params
 
 
@@ -209,10 +209,11 @@ if __name__ == '__main__':
     '''
     # 设置学习率和迭代次数
     alpha = 0.1
-    max_iter = 100
+    max_iter = 3
     # 训练神经网络，根据函数选择优化方法
-    initial_nn_params = SGD(initial_nn_params, input_layer_size, hidden_layer_size, num_labels, X_train, y_train,
+    initial_nn_params = OGD(initial_nn_params, input_layer_size, hidden_layer_size, num_labels, X_train, y_train,
                                 lambda_reg, max_iter, alpha)
+
 
     # 重新分割，获得三个层次之间两两的权重
     Theta1 = np.reshape(initial_nn_params[:hidden_layer_size * (input_layer_size + 1)], (
