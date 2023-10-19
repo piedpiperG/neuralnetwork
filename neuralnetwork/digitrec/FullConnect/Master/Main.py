@@ -36,7 +36,7 @@ if __name__ == '__main__':
     initial_Theta2 = initialise(num_labels, hidden_layer_size)  # 隐藏层和输出层之间的权重
     # 设置神经网络的参数
     initial_nn_params = np.concatenate((initial_Theta1.flatten(), initial_Theta2.flatten()))
-    lambda_reg = 0.1  # 避免过拟合
+    lambda_reg = 0.01  # 避免过拟合
     '''
     进行神经网络的训练
     '''
@@ -44,7 +44,7 @@ if __name__ == '__main__':
     alpha = 0.1
     max_iter = 100
     # 训练神经网络，根据函数选择优化方法
-    initial_nn_params = BGD(initial_nn_params, input_layer_size, hidden_layer_size, num_labels, X_train, y_train,
+    initial_nn_params = Momentum(initial_nn_params, input_layer_size, hidden_layer_size, num_labels, X_train, y_train,
                             lambda_reg, max_iter, alpha)
 
     # 重新分割，获得三个层次之间两两的权重
@@ -58,3 +58,7 @@ if __name__ == '__main__':
     # 训练集的准确度
     pred = predict(Theta1, Theta2, X_train)
     print('Training Set Accuracy: {:f}'.format((np.mean(pred == y_train) * 100)))
+
+    # 将Theta参数保存在txt文件中，用作后续程序识别
+    np.savetxt('Theta1.txt', Theta1, delimiter=' ')
+    np.savetxt('Theta2.txt', Theta2, delimiter=' ')
