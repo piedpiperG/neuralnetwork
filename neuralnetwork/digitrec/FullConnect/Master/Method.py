@@ -23,9 +23,9 @@ def loss(Theta1, Theta2, y_vect, a3, lamb, m):
     )
     Reg = L1_Reg
     # 交叉熵损失（Cross-Entropy Loss）
-    # J = (1 / m) * (np.sum(np.sum(-y_vect * np.log(a3) - (1 - y_vect) * np.log(1 - a3)))) + Reg
+    J = (1 / m) * (np.sum(np.sum(-y_vect * np.log(a3) - (1 - y_vect) * np.log(1 - a3)))) + Reg
     # 均方误差损失（Mean Squared Error Loss）
-    J = (1 / (2 * m)) * np.sum(np.sum(np.square(a3 - y_vect))) + Reg
+    # J = (1 / (2 * m)) * np.sum(np.square(a3 - y_vect)) + Reg
     # # Hinge Loss（合页损失，用于支持向量机等）
     # J = (1 / m) * np.sum(np.maximum(0, 1 - (2 * y_vect - 1) * a3)) + Reg
     # #  Huber Loss（用于回归问题的平滑损失）

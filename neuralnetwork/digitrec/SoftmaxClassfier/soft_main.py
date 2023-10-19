@@ -2,6 +2,7 @@ import numpy as np
 from scipy.io import loadmat
 
 
+# 加载数据文件
 def loadFile():
     # 加载数据文件
     data = loadmat('mnist-original.mat')
@@ -20,70 +21,79 @@ def loadFile():
     x_test = x[60000:, :]
     y_test = y[60000:]
 
-    y_train = y_train[::-1].reshape(1, -1)
-    y_test = y_test[::-1].reshape(1, -1)
-    y_train = y_train[::-1].reshape(1, -1).astype(int)
-    y_test = y_test[::-1].reshape(1, -1).astype(int)
-
     return x_train, y_train, x_test, y_test
 
 
-def Calculate_accuracy(target, prediction):
-    score = 0
-    for i in range(len(target)):
-        if target[i] == prediction[i]:
-            score += 1
-    return score / len(target)
+# 定义 softmax 函数
+def softmax(x):
+    e_x = np.exp(x - np.max(x, axis=-1, keepdims=True))
+    return e_x / e_x.sum(axis=-1, keepdims=True)
 
 
-def predict(test, weights):
-    h = test * weights
-    return h.argmax(axis=1)
+# 初始化权重矩阵和偏置向量
+def initialize_parameters(input_size, output_size):
+    W = np.random.randn(input_size, output_size) * 0.001
+    b = np.zeros(output_size)
+    return W, b
 
 
-def gradientAscent(feature_data, label_data, k, maxCycle, alpha):
-    """Softmax分类器
-    input:feature_data 手写数字像素矩阵
-    label_data 对应的类别矩阵
-    k 有多少个类别（10个）
-    maxCycle 最大迭代次数
-    alpha 学习率
-    """
-    x_train, y_train, x_test, y_test = loadFile()
-    y_train = y_train.tolist()[0]
-    y_test = y_test.tolist()[0]
-    m, n = np.shape(feature_data)
-    weights = np.mat(np.ones((n, k)))
-    i = 0
-    while i <= maxCycle:
-        err = np.exp(feature_data * weights)
-        if i % 100 == 0:
-            print('cost score : ', cost(err, label_data))
-            train_predict = predict(x_train, weights)
-            test_predict = predict(x_test, weights)
-            print('Train_accuracy : ', Calculate_accuracy(y_train, train_predict))
-            print('Test_accuracy : ', Calculate_accuracy(y_test, test_predict))
-        rowsum = -err.sum(axis=1)
-        rowsum = rowsum.repeat(k, axis=1)
-        err = err / rowsum
-        for x in range(m):
-            err[x, label_data[x]] += 1
-        weights = weights + (alpha / m) * feature_data.T * err
-        i += 1
-    return weights
+# 定义交叉熵损失函数
+def cross_entropy_loss(y_true, y_pred):
+    m = y_true.shape[0]
+    y_true = y_true.astype(int)  # 强制转换为整数类型
+    return -np.sum(np.log(y_pred[np.arange(m), y_true])) / m
 
 
-def cost(err, label_data):
-    m = np.shape(err)[0]
-    sum_cost = 0.0
-    for i in range(m):
-        if err[i, label_data[i]] / np.sum(err[i, :]) > 0:
-            sum_cost -= np.log(err[i, label_data[i]] / np.sum(err[i, :]))
-        else:
-            sum_cost -= 0
-    return sum_cost / m
+
+# 定义准确率计算函数
+def accuracy(y_true, y_pred):
+    return np.mean(y_true == np.argmax(y_pred, axis=1))
 
 
+# 训练 softmax 分类器
+def train_softmax_classifier(x_train, y_train, x_test, y_test, learning_rate, num_epochs, batch_size):
+    input_size = x_train.shape[1]
+    num_classes = len(np.unique(y_train))
+    W, b = initialize_parameters(input_size, num_classes)
+
+    m = x_train.shape[0]
+    for epoch in range(num_epochs):
+        for i in range(0, m, batch_size):
+            x_batch = x_train[i:i + batch_size]
+            y_batch = y_train[i:i + batch_size]
+            y_batch = y_batch.astype(int)  # 强制转换为整数类型
+            # 计算预测值
+            scores = np.dot(x_batch, W) + b
+            y_pred = softmax(scores)
+            # 计算损失
+            loss = cross_entropy_loss(y_batch, y_pred)
+            # 计算梯度
+            grad = y_pred
+            grad[np.arange(x_batch.shape[0]), y_batch] -= 1
+            grad /= batch_size
+
+            dW = np.dot(x_batch.T, grad)
+            db = np.sum(grad, axis=0)
+
+            # 更新权重和偏置
+            W -= learning_rate * dW
+            b -= learning_rate * db
+
+        # 在每个 epoch 结束后打印损失和准确率
+        y_test_pred = softmax(np.dot(x_test, W) + b)
+        test_loss = cross_entropy_loss(y_test, y_test_pred)
+        test_accuracy = accuracy(y_test, y_test_pred)
+        print(
+            f"Epoch {epoch + 1}/{num_epochs}, Loss: {loss:.4f}, Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.2%}")
+
+
+# 设置超参数
+learning_rate = 0.1
+num_epochs = 100
+batch_size = 128
+
+# 加载数据集
 x_train, y_train, x_test, y_test = loadFile()
-y_train = y_train.tolist()[0]
-gradientAscent(x_train, y_train, 10, 100000, 0.001)
+
+# 训练 softmax 分类器
+train_softmax_classifier(x_train, y_train, x_test, y_test, learning_rate, num_epochs, batch_size)

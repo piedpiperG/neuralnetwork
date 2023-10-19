@@ -21,7 +21,6 @@ def neural_network(nn_params, input_layer_size, hidden_layer_size, num_labels, X
     a2 = np.append(one_matrix, a2, axis=1)  # 向隐藏层添加偏置单元，使之成为偏差节点
     z3 = np.dot(a2, Theta2.transpose())
     a3 = 1 / (1 + np.exp(-z3))  # 采用Sigmoid函数对输出层进行激活
-
     # 将标签改为一个长度为10的布尔向量，在向量的10个布尔数值里，哪个数等于1，它就代表着几
     y_vect = np.zeros((m, 10))
     for i in range(m):
