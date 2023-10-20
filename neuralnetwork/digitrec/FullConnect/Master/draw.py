@@ -75,3 +75,25 @@ def drawpic(data):
     # 显示图表
     plt.show()
     data.sort(key=lambda x: (x[0], x[1], x[2]))  # 按照alpha、lambda_reg和max_iter排序
+
+
+def draw_accuracy_curve(data):
+    alphas = [item[0] for item in data]
+    lambda_regs = [item[1] for item in data]
+    max_iters = [item[2] for item in data]
+    accuracies = [item[3] for item in data]
+
+    # 创建一个新的图形
+    plt.figure()
+
+    # 绘制折线图
+    plt.plot(range(len(accuracies)), accuracies, marker='o', linestyle='-')
+    plt.xticks(range(len(accuracies)), [f'{alpha}, {lambda_reg}, {max_iter}' for alpha, lambda_reg, max_iter in
+                                        zip(alphas, lambda_regs, max_iters)], rotation=45)
+    plt.xlabel('Hyperparameters (alpha, lambda_reg, max_iter)')
+    plt.ylabel('Accuracy')
+    plt.title('Accuracy vs. Hyperparameters')
+
+    # 显示图表
+    plt.tight_layout()
+    plt.show()

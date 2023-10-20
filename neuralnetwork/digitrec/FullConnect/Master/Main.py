@@ -1,7 +1,7 @@
 from scipy.io import loadmat
 from Method import initialise, predict
 from Optim import *
-from draw import drawpic
+from draw import drawpic, draw_accuracy_curve
 
 if __name__ == '__main__':
     '''
@@ -42,11 +42,11 @@ if __name__ == '__main__':
     '''
     # 设置学习率和迭代次数
     alpha = 0.01
-    max_iter = 3
+    max_iter = 50
     lambda_reg = 0.1  # 避免过拟合
     # 训练神经网络，根据函数选择优化方法
-    initial_nn_params = BGD(initial_nn_params, input_layer_size, hidden_layer_size, num_labels, X_train, y_train,
-                            lambda_reg, max_iter, alpha, X_test, y_test)
+    initial_nn_params = MiniBGD(initial_nn_params, input_layer_size, hidden_layer_size, num_labels, X_train, y_train,
+                                lambda_reg, max_iter, alpha, X_test, y_test)
 
     # 重新分割，获得三个层次之间两两的权重
     Theta1 = np.reshape(initial_nn_params[:hidden_layer_size * (input_layer_size + 1)], (
@@ -65,21 +65,22 @@ if __name__ == '__main__':
     np.savetxt('Theta2.txt', Theta2, delimiter=' ')
 
     # 寻找最佳超参数
-    data = []
-    best_asem = []
-    for alpha in [0.1, 0.01, 0.001]:
-        for lambda_reg in [0.01, 0.1, 1.0]:
-            for max_iter in [10, 50, 100, 200]:
-                initial_nn_params = BGD(initial_nn_params, input_layer_size, hidden_layer_size, num_labels, X_train,
-                                        y_train,
-                                        lambda_reg, max_iter, alpha, X_test, y_test)
-                Theta1 = np.reshape(initial_nn_params[:hidden_layer_size * (input_layer_size + 1)], (
-                    hidden_layer_size, input_layer_size + 1))  # shape = (100, 785)
-                Theta2 = np.reshape(initial_nn_params[hidden_layer_size * (input_layer_size + 1):],
-                                    (num_labels, hidden_layer_size + 1))  # shape = (10, 101)
-                # 测试集的准确度
-                pred = predict(Theta1, Theta2, X_test)
-                print(f'alpha={alpha},lambda_reg={lambda_reg},max_iter={max_iter}')
-                print('Accuracy: {:f}'.format((np.mean(pred == y_test) * 100)))
-                data.append((alpha, lambda_reg, max_iter, np.mean(pred == y_test) * 100))
-    drawpic(data)
+    # data = []
+    # best_asem = []
+    # for alpha in [0.5, 0.1, 0.01, 0.001]:
+    #     for lambda_reg in [0.01, 0.1, 1.0]:
+    #         for max_iter in [10, 50, 100, 200]:
+    #             initial_nn_params = MiniBGD(initial_nn_params, input_layer_size, hidden_layer_size, num_labels, X_train,
+    #                                         y_train,
+    #                                         lambda_reg, max_iter, alpha, X_test, y_test)
+    #             Theta1 = np.reshape(initial_nn_params[:hidden_layer_size * (input_layer_size + 1)], (
+    #                 hidden_layer_size, input_layer_size + 1))  # shape = (100, 785)
+    #             Theta2 = np.reshape(initial_nn_params[hidden_layer_size * (input_layer_size + 1):],
+    #                                 (num_labels, hidden_layer_size + 1))  # shape = (10, 101)
+    #             # 测试集的准确度
+    #             pred = predict(Theta1, Theta2, X_test)
+    #             print(f'alpha={alpha},lambda_reg={lambda_reg},max_iter={max_iter}')
+    #             print('Accuracy: {:f}'.format((np.mean(pred == y_test) * 100)))
+    #             data.append((alpha, lambda_reg, max_iter, np.mean(pred == y_test) * 100))
+    # drawpic(data)
+    # draw_accuracy_curve(data)
