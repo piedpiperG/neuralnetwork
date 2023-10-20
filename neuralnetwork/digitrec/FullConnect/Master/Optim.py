@@ -25,10 +25,9 @@ def BGD(nn_params, input_layer_size, hidden_layer_size, num_labels, X, y, lambda
         train_accuracy_history.append(train_accuracy)
         test_accuracy_history.append(test_accuracy)
 
-        if (i % 10) == 0:
-            print(f"Iteration {i}: Cost {cost}")
-            print('Training Set Accuracy: {:f}'.format(train_accuracy))
-            print('Test Set Accuracy: {:f}'.format(test_accuracy))
+        # print(f"Iteration {i}: Cost {cost}")
+        # print('Training Set Accuracy: {:f}'.format(train_accuracy))
+        # print('Test Set Accuracy: {:f}'.format(test_accuracy))
 
     plot_loss_and_accuracy(loss_history, train_accuracy_history, test_accuracy_history)
     return nn_params
