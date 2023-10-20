@@ -50,7 +50,7 @@ def predict(Theta1, Theta2, X):
     return p
 
 
-def plot_loss_and_accuracy(loss_history, accuracy_history):
+def plot_loss_and_accuracy(loss_history, train_accuracy_history, test_accuracy_history):
     # 绘制损失曲线
     plt.figure(figsize=(12, 4))
     plt.subplot(1, 2, 1)
@@ -61,10 +61,12 @@ def plot_loss_and_accuracy(loss_history, accuracy_history):
 
     # 绘制准确度曲线
     plt.subplot(1, 2, 2)
-    plt.plot(range(len(accuracy_history)), accuracy_history, label='Accuracy')
+    plt.plot(range(len(train_accuracy_history)), train_accuracy_history, label='Train Accuracy')
+    plt.plot(range(len(test_accuracy_history)), test_accuracy_history, label='Test Accuracy')
     plt.xlabel('Iterations')
     plt.ylabel('Accuracy (%)')
-    plt.title('Training Accuracy')
+    plt.title('Training and Test Accuracy')
+    plt.legend()  # 添加图例
 
     plt.tight_layout()
     plt.show()

@@ -36,16 +36,16 @@ if __name__ == '__main__':
     initial_Theta2 = initialise(num_labels, hidden_layer_size)  # 隐藏层和输出层之间的权重
     # 设置神经网络的参数
     initial_nn_params = np.concatenate((initial_Theta1.flatten(), initial_Theta2.flatten()))
-    lambda_reg = 0.01  # 避免过拟合
+    lambda_reg = 0.1 # 避免过拟合
     '''
     进行神经网络的训练
     '''
     # 设置学习率和迭代次数
-    alpha = 0.1
-    max_iter = 100
+    alpha = 0.001
+    max_iter = 50
     # 训练神经网络，根据函数选择优化方法
-    initial_nn_params = Momentum(initial_nn_params, input_layer_size, hidden_layer_size, num_labels, X_train, y_train,
-                            lambda_reg, max_iter, alpha)
+    initial_nn_params = Adam(initial_nn_params, input_layer_size, hidden_layer_size, num_labels, X_train, y_train,
+                            lambda_reg, max_iter, alpha, X_test, y_test)
 
     # 重新分割，获得三个层次之间两两的权重
     Theta1 = np.reshape(initial_nn_params[:hidden_layer_size * (input_layer_size + 1)], (
