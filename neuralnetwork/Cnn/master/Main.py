@@ -71,7 +71,7 @@ def train():
             Y = y_train[i:i + batch_size]
 
             predict = conv1.forward(X)
-            # predict = batchnorm1.forward(predict)
+            predict = batchnorm1.forward(predict)
             predict = relu1.forward(predict)
             predict = dropout1.forward(predict, training=True)
             predict = pool1.forward(predict)
@@ -91,13 +91,15 @@ def train():
             delta = pool1.backward(delta)
             delta = dropout1.backward(delta)
             delta = relu1.backward(delta)
-            # delta = batchnorm1.backward(delta, learning_rate)
+            delta = batchnorm1.backward(delta, learning_rate)
             conv1.backward(delta, learning_rate)
 
             print("Epoch-{}-{:05d}".format(str(epoch), i), ":", "loss:{:.4f}".format(loss))
 
         learning_rate *= 0.95 ** (epoch + 1)
-        np.savez("data2.npz", k1=conv1.k, b1=conv1.b, k2=conv2.k, b2=conv2.b, w3=link1.W, b3=link1.b)
+        np.savez("data2.npz", k1=conv1.k, b1=conv1.b, k2=conv2.k, b2=conv2.b, w3=link1.W, b3=link1.b,
+                 g1=batchnorm1.gamma, beta1=batchnorm1.beta, run_mean1=batchnorm1.running_mean,
+                 run_var1=batchnorm1.running_var)
 
 
 def eval():
@@ -121,15 +123,20 @@ def eval():
     conv2.b = r["b2"]
     link1.W = r["w3"]
     link1.n = r["b3"]
+    batchnorm1.gamma = r["g1"]
+    batchnorm1.beta = r["beta1"]
+    batchnorm1.running_mean = r["run_mean1"]
+    batchnorm1.running_var = r["run_var1"]
 
     num = 0
-    for i in range(10000):
+    size = 10000
+    for i in range(size):
         X = X_test[i]
         X = X[np.newaxis, :]
         Y = y_test[i]
 
         predict = conv1.forward(X)
-        # predict = batchnorm1.forward(predict, training=False)
+        predict = batchnorm1.forward(predict, training=False)
         predict = relu1.forward(predict)
         predict = pool1.forward(predict)
         predict = conv2.forward(predict)
@@ -142,9 +149,9 @@ def eval():
 
         if np.argmax(predict) == Y:
             num += 1
-            print(i)
+            print(f'{i + 1}:{num / (i + 1) * 100}')
 
-    print("TEST-ACC: ", num / 10000 * 100, "%")
+    print("TEST-ACC: ", num / size * 100, "%")
 
 
 # 寻找最优超参数
