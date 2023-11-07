@@ -1,6 +1,5 @@
 import numpy as np
 from utils import img2col
-from method import BatchNorm, LayerNorm
 
 
 # 卷积层
@@ -37,7 +36,6 @@ class Conv:
             image_col = img2col(self.x[i], kernel_width, self.path)
             bk_img[i] = (np.dot(image_col, kernel) + self.b).reshape(bkimg_size, bkimg_size, kernel_num)
             self.image_col.append(image_col)
-        # bk_img = self.batchnorm.forward(bk_img)
         return bk_img
 
     def backward(self, delta, learning_rate):
@@ -48,8 +46,6 @@ class Conv:
         # 从上一层传回来的梯度,批量,宽度,高度,卷积核个数
         delta_batch, delta_width, delta_height, delta_channel = delta.shape
 
-        # delta = self.batchnorm.backward(delta)
-        # 计算self.k_gradient,self.b_gradient
         delta_col = delta.reshape(delta_batch, -1, delta_channel)
         for i in range(batch_size):
             self.k_gradient += np.dot(self.image_col[i].T, delta_col[i]).reshape(self.k.shape)

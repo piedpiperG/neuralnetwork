@@ -12,11 +12,8 @@ class Dropout:
         else:
             return x
 
-    def backward(self, delta, training=True):
-        if training:
-            return delta * self.mask
-        else:
-            return delta
+    def backward(self, delta):
+        return delta * self.mask
 
 
 class BatchNorm:
@@ -32,84 +29,73 @@ class BatchNorm:
         self.mu = None
         self.var = None
         self.eps = 1e-5  # 防止除以0
+        self.x_reshaped = None
 
     def forward(self, x, training=True, momentum=0.9):
-        if training:
-            mu = x.mean(axis=0)
-            var = x.var(axis=0)
-            self.x_norm = (x - mu) / np.sqrt(var + self.eps)
-            out = self.gamma * self.x_norm + self.beta
+        N, H, W, C = x.shape
+        # 确保gamma和beta的形状可以在通道维度上广播
+        self.gamma = self.gamma.reshape(1, 1, 1, C)
+        self.beta = self.beta.reshape(1, 1, 1, C)
+        # 转换为(N*H*W, C)以计算每个通道的均值和方差
+        x_reshaped = x.reshape((N * H * W, C))
+        self.x_reshaped = x_reshaped
 
-            # 更新运行时均值和方差
+        if training:
+            mu = x_reshaped.mean(axis=0)
+            var = x_reshaped.var(axis=0)
+
+            self.x_norm = (x_reshaped - mu) / np.sqrt(var + self.eps)
+            self.x_norm = self.x_norm.reshape(N, H, W, C)
+
             self.running_mean = momentum * self.running_mean + (1 - momentum) * mu
             self.running_var = momentum * self.running_var + (1 - momentum) * var
 
-            # 保存反向传播需要的值
             self.mu = mu
             self.var = var
         else:
-            # 测试时使用运行时的均值和方差
-            x_norm = (x - self.running_mean) / np.sqrt(self.running_var + self.eps)
-            out = self.gamma * x_norm + self.beta
+            x_norm = (x_reshaped - self.running_mean) / np.sqrt(self.running_var + self.eps)
+            self.x_norm = x_norm.reshape(N, H, W, C)
+        out = self.gamma * self.x_norm + self.beta
         return out
 
-    def backward(self, delta):
+    def backward(self, delta, learning_rate):
         N, H, W, C = delta.shape
-        learning_rate = 0.3
+        # 首先，转换delta的形状以匹配归一化数据的形状
+        delta_reshaped = delta.reshape((N * H * W, C))
+        x_norm_reshaped = self.x_norm.reshape((N * H * W, C))
 
-        # 对gamma的梯度
-        dgamma = np.sum(delta * self.x_norm, axis=(0, 2, 3)).reshape(self.gamma.shape)
-        # 对beta的梯度
-        dbeta = np.sum(delta, axis=(0, 2, 3)).reshape(self.beta.shape)
+        # 计算beta和gamma的梯度
+        dbeta = delta_reshaped.sum(axis=0)
+        dgamma = np.sum(x_norm_reshaped * delta_reshaped, axis=0)
 
-        # 对输入x的梯度
-        dx_norm = delta * self.gamma.reshape(1, -1, 1, 1)
-        dvar = np.sum(dx_norm * (self.x_norm - self.mu), axis=(0, 2, 3)) * -0.5 * np.power(
-            self.var.reshape(-1) + self.eps, -1.5)
-        dmu = np.sum(dx_norm * -1 / np.sqrt(self.var + self.eps), axis=(0, 2, 3)) + dvar * np.mean(
-            -2 * (self.x_norm - self.mu), axis=(0, 2, 3))
+        # 计算归一化数据的梯度
+        dx_norm = delta_reshaped * self.gamma
 
-        dx = (dx_norm / np.sqrt(self.var + self.eps)) + (
-                dvar.reshape(1, C, 1, 1) * 2 * (self.x_norm - self.mu) / (N * H * W)) + (
-                     dmu.reshape(1, C, 1, 1) / (N * H * W))
+        # 归一化x的梯度
+        dvar = np.sum(dx_norm * (self.x_reshaped - self.mu), axis=0) * -0.5 * np.power(self.var + self.eps, -1.5)
+        dmu = np.sum(dx_norm * -1 / np.sqrt(self.var + self.eps), axis=0) + dvar * np.mean(
+            -2 * (self.x_reshaped - self.mu), axis=0)
 
-        # 更新gamma和beta
-        self.gamma -= learning_rate * dgamma
-        self.beta -= learning_rate * dbeta
-
+        # 归一化梯度
+        dx_reshaped = (dx_norm / np.sqrt(self.var + self.eps)) + (dvar * 2 * (self.x_reshaped - self.mu) / N) + (
+                    dmu / N)
+        dx = dx_reshaped.reshape(N, H, W, C)
+        self.gamma = self.gamma - learning_rate * dgamma
+        self.beta = self.beta - learning_rate * dbeta
         return dx
 
 
-# Layer Normalization layer
-class LayerNorm:
-    def __init__(self, num_features):
-        self.gamma = np.ones(num_features)
-        self.beta = np.zeros(num_features)
-        self.eps = 1e-5
 
-    def forward(self, x):
-        mean = x.mean(axis=1, keepdims=True)
-        variance = x.var(axis=1, keepdims=True)
-        x_normalized = (x - mean) / np.sqrt(variance + self.eps)
-        out = self.gamma * x_normalized + self.beta
-        self.cache = (x, x_normalized, mean, variance)
-        return out
-
-    def backward(self, dout):
-        x, x_normalized, mean, variance = self.cache
-        N = x.shape[1]
-
-        dbeta = dout.sum(axis=0)
-        dgamma = np.sum(dout * x_normalized, axis=0)
-
-        dx_normalized = dout * self.gamma
-        dvariance = np.sum(dx_normalized * (x - mean) * -0.5 * np.power(variance + self.eps, -1.5), axis=1,
-                           keepdims=True)
-        dmean = np.sum(dx_normalized * -1 / np.sqrt(variance + self.eps), axis=1, keepdims=True) + \
-                dvariance * np.mean(-2 * (x - mean), axis=1, keepdims=True)
-
-        dx = (dx_normalized / np.sqrt(variance + self.eps)) + \
-             (dvariance * 2 * (x - mean) / N) + \
-             (dmean / N)
-
-        return dx, dgamma, dbeta
+def k_fold_split(k, data_size):
+    indices = np.arange(data_size)
+    np.random.shuffle(indices)
+    fold_sizes = np.full(k, data_size // k, dtype=int)
+    fold_sizes[:data_size % k] += 1
+    current = 0
+    for fold_size in fold_sizes:
+        start, stop = current, current + fold_size
+        mask = np.ones(data_size, dtype=bool)
+        mask[indices[start:stop]] = False
+        train_indices, val_indices = indices[mask], indices[start:stop]
+        yield train_indices, val_indices
+        current = stop
