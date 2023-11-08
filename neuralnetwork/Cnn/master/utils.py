@@ -50,8 +50,8 @@ class Load_Data:
     def load_train(self):
         X_train = self.X[:self.train_size, :].reshape(self.train_size, 28, 28)
         y_train = self.y[:self.train_size]
-        X_train = X_train.reshape(60000, 28, 28, 1) / 255.  # 输入向量处理
-        y_train = onehot(y_train, 60000)  # 标签one-hot处理 (60000, 10)
+        X_train = X_train.reshape(self.train_size, 28, 28, 1) / 255.  # 输入向量处理
+        y_train = onehot(y_train, self.train_size)  # 标签one-hot处理 (60000, 10)
         # 使用随机排列的索引来打乱训练数据和标签
         X_train = X_train[self.train_indices]
         y_train = y_train[self.train_indices]
@@ -60,7 +60,7 @@ class Load_Data:
     def load_test(self):
         X_test = self.X[self.train_size:self.train_size + self.test_size, :].reshape(self.test_size, 28, 28)
         y_test = self.y[self.train_size:self.train_size + self.test_size]
-        X_test = X_test.reshape(10000, 28, 28, 1) / 255.
+        X_test = X_test.reshape(self.test_size, 28, 28, 1) / 255.
         # 使用随机排列的索引来打乱训练数据和标签
         X_test = X_test[self.test_indices]
         y_test = y_test[self.test_indices]

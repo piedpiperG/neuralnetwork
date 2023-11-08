@@ -47,20 +47,22 @@ class Softmax(object):
 
 class Run:
 
-    def __init__(self, train_size, test_size):
+    def __init__(self, train_size, test_size, learning_rate=0.01, dropout_rate=0.3, epoch_num=2, batch_size=3):
         self.train_size = train_size
         self.test_size = test_size
+        self.learning_rate = learning_rate  # 学习率
+        self.dropout_rate = dropout_rate  # drop_out概率
+        self.epoch_num = epoch_num  # 迭代次数
+        self.batch_size = batch_size  # 批量大小
 
-    
     def train(self):
-        data = Load_Data()
+        data = Load_Data(train_size=self.train_size, test_size=self.test_size)
         X_train, y_train = data.load_train()
 
-        learning_rate = 0.01  # 学习率
-        dropout_rate = 0.3  # drop_out概率
-        epoch_num = 2  # 迭代次数
-        batch_size = 3  # 批量大小
-
+        learning_rate = self.learning_rate
+        dropout_rate = self.dropout_rate
+        epoch_num = self.epoch_num
+        batch_size = self.batch_size
 
         conv1 = Conv(kernel_shape=(5, 5, 1, 6))
         relu1 = Relu()
@@ -74,7 +76,7 @@ class Run:
         batchnorm1 = BatchNorm(6)
 
         for epoch in range(epoch_num):
-            for i in range(0, 6000, batch_size):
+            for i in range(0, self.train_size, batch_size):
                 X = X_train[i:i + batch_size]
                 Y = y_train[i:i + batch_size]
 
@@ -111,9 +113,8 @@ class Run:
 
     def eval(self):
         r = np.load("data2.npz")
-        data = Load_Data()
+        data = Load_Data(train_size=self.train_size, test_size=self.test_size)
         X_test, y_test = data.load_test()
-
         conv1 = Conv(kernel_shape=(5, 5, 1, 6))  # 24x24x6
         batchnorm1 = BatchNorm(6)
         relu1 = Relu()
@@ -136,7 +137,8 @@ class Run:
         batchnorm1.running_var = r["run_var1"]
 
         num = 0
-        size = 10000
+        size = len(y_test)
+        print(size)
         for i in range(size):
             X = X_test[i]
             X = X[np.newaxis, :]
@@ -162,6 +164,6 @@ class Run:
 
 
 if __name__ == '__main__':
-    run = Run()
+    run = Run(train_size=600, test_size=1000)
     run.train()
     run.eval()
