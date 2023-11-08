@@ -22,8 +22,9 @@ def img2col(x, ksize, stride):
             num += 1
     return image_col
 
+
 class Load_Data:
-    def __init__(self):
+    def __init__(self, train_size=60000, test_size=10000):
         '''
         导入数据集，划分为 60,000 个训练样本，10,000 个测试样本
         '''
@@ -37,9 +38,9 @@ class Load_Data:
         y = data['label']
         self.y = y.flatten()
         # 将数据分割为 60,000 个训练集
-        self.train_size = 60000
+        self.train_size = train_size
         # 和 10,000 个测试集
-        self.test_size = 10000
+        self.test_size = test_size
         # 生成随机排列的索引
         self.train_indices = np.arange(self.train_size)
         np.random.shuffle(self.train_indices)
