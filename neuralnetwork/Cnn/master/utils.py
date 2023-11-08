@@ -41,27 +41,20 @@ class Load_Data:
         self.train_size = train_size
         # 和 10,000 个测试集
         self.test_size = test_size
-        # 生成随机排列的索引
-        self.train_indices = np.arange(self.train_size)
-        np.random.shuffle(self.train_indices)
-        self.test_indices = np.arange(self.test_size)
-        np.random.shuffle(self.test_indices)
+        self.indices = np.arange(70000)
+        np.random.shuffle(self.indices)
+        self.X = self.X[self.indices]
+        self.y = self.y[self.indices]
 
     def load_train(self):
         X_train = self.X[:self.train_size, :].reshape(self.train_size, 28, 28)
         y_train = self.y[:self.train_size]
         X_train = X_train.reshape(self.train_size, 28, 28, 1) / 255.  # 输入向量处理
         y_train = onehot(y_train, self.train_size)  # 标签one-hot处理 (60000, 10)
-        # 使用随机排列的索引来打乱训练数据和标签
-        X_train = X_train[self.train_indices]
-        y_train = y_train[self.train_indices]
         return X_train, y_train
 
     def load_test(self):
         X_test = self.X[self.train_size:self.train_size + self.test_size, :].reshape(self.test_size, 28, 28)
         y_test = self.y[self.train_size:self.train_size + self.test_size]
         X_test = X_test.reshape(self.test_size, 28, 28, 1) / 255.
-        # 使用随机排列的索引来打乱训练数据和标签
-        X_test = X_test[self.test_indices]
-        y_test = y_test[self.test_indices]
         return X_test, y_test

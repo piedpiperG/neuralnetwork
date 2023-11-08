@@ -1,4 +1,7 @@
 import numpy as np
+import pandas as pd
+from matplotlib import pyplot as plt
+
 from utils import Load_Data
 from model import Conv, Pool, Linear
 from method import Dropout, BatchNorm
@@ -54,9 +57,10 @@ class Run:
         self.dropout_rate = dropout_rate  # drop_out概率
         self.epoch_num = epoch_num  # 迭代次数
         self.batch_size = batch_size  # 批量大小
+        self.data = Load_Data(train_size=self.train_size, test_size=self.test_size)
 
     def train(self):
-        data = Load_Data(train_size=self.train_size, test_size=self.test_size)
+        data = self.data
         X_train, y_train = data.load_train()
 
         learning_rate = self.learning_rate
@@ -113,7 +117,7 @@ class Run:
 
     def eval(self):
         r = np.load("data2.npz")
-        data = Load_Data(train_size=self.train_size, test_size=self.test_size)
+        data = self.data
         X_test, y_test = data.load_test()
         conv1 = Conv(kernel_shape=(5, 5, 1, 6))  # 24x24x6
         batchnorm1 = BatchNorm(6)
@@ -161,9 +165,92 @@ class Run:
                 print(f'{i + 1}:{num / (i + 1) * 100}')
 
         print("TEST-ACC: ", num / size * 100, "%")
+        return num / size * 100
 
 
 if __name__ == '__main__':
-    run = Run(train_size=600, test_size=1000)
-    run.train()
-    run.eval()
+    # 定义超参数的不同组合
+    learning_rates = [0.001, 0.01, 0.1]
+    dropout_rates = [0.2, 0.3, 0.4]
+    epoch_nums = [2, 5]
+    batch_sizes = [1, 3, 10, 20]
+
+    # 为了绘制三维图表，我们需要把数据整理成三维坐标形式
+    # 初始化坐标列表
+    lr_list = []
+    dr_list = []
+    bs_list = []
+    best_acc_list = []
+
+    # 存储结果的字典
+    results = {}
+    # 进行交叉验证
+    for lr in learning_rates:
+        for dr in dropout_rates:
+            for en in epoch_nums:
+                for bs in batch_sizes:
+                    # 初始化Run类的实例
+                    run = Run(train_size=600, test_size=1000, learning_rate=lr, dropout_rate=dr, epoch_num=en,
+                              batch_size=bs)
+                    # 训练模型
+                    run.train()
+                    # 评估模型
+                    accuracy = run.eval()
+                    # 存储结果
+                    results[(lr, dr, en, bs)] = accuracy
+                    print(f"LR: {lr}, DR: {dr}, EN: {en}, BS: {bs}, Acc: {accuracy}")
+
+    # 选取每组learning_rate, dropout_rate和batch_size组合下，epoch_num最好的结果
+    for lr in learning_rates:
+        for dr in dropout_rates:
+            for bs in batch_sizes:
+                # 找出当前组合下，epoch_num的最大准确率
+                best_acc = max(results[(lr, dr, en, bs)] for en in epoch_nums)
+                # 将当前组合和对应的最佳准确率添加到列表
+                lr_list.append(lr)
+                dr_list.append(dr)
+                bs_list.append(bs)
+                best_acc_list.append(best_acc)
+    # 绘制三维图表
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    # 绘制散点图
+    sc = ax.scatter(lr_list, dr_list, bs_list, c=best_acc_list, cmap='viridis')
+
+    # 设置坐标轴
+    ax.set_xlabel('Learning Rate')
+    ax.set_ylabel('Dropout Rate')
+    ax.set_zlabel('Batch Size')
+
+    # 添加颜色条表示准确率
+    plt.colorbar(sc, label='Accuracy (%)')
+
+    # 展示图表
+    plt.show()
+    # 创建数据字典
+    data = {
+        'Learning Rate': lr_list,
+        'Dropout Rate': dr_list,
+        'Batch Size': bs_list,
+        'Accuracy': best_acc_list
+    }
+
+    # 创建DataFrame
+    df = pd.DataFrame(data)
+    # 使用DataFrame的sort_values方法按Accuracy列降序排序
+    df_sorted = df.sort_values(by='Accuracy', ascending=False)
+    df = df_sorted
+    df.to_csv("results.csv")
+    # 绘制表格，但不包含索引
+    fig, ax = plt.subplots(figsize=(10, 3))  # 设置图表大小
+    ax.axis('tight')
+    ax.axis('off')
+    table = ax.table(cellText=df.values, colLabels=df.columns, loc='center', cellLoc='center', colLoc='center')
+
+    # 调整表格大小
+    table.auto_set_font_size(False)
+    table.set_fontsize(10)
+    table.auto_set_column_width(col=list(range(len(df.columns))))
+
+    plt.show()
