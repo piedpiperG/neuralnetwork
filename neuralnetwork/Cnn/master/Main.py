@@ -170,10 +170,10 @@ class Run:
 
 if __name__ == '__main__':
     # 定义超参数的不同组合
-    learning_rates = [0.001, 0.01, 0.1, 0.05]
+    learning_rates = [0.01, 0.001, 0.1, 0.05]
     dropout_rates = [0.2, 0.3, 0.4, 0.6]
     epoch_nums = [2, 5]
-    batch_sizes = [1, 3, 5, 10, 30]
+    batch_sizes = [3, 1, 5, 10, 30]
 
     # 为了绘制三维图表，我们需要把数据整理成三维坐标形式
     # 初始化坐标列表
@@ -190,7 +190,7 @@ if __name__ == '__main__':
             for en in epoch_nums:
                 for bs in batch_sizes:
                     # 初始化Run类的实例
-                    run = Run(train_size=600, test_size=1000, learning_rate=lr, dropout_rate=dr, epoch_num=en,
+                    run = Run(train_size=6000, test_size=1000, learning_rate=lr, dropout_rate=dr, epoch_num=en,
                               batch_size=bs)
                     # 训练模型
                     run.train()
