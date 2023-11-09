@@ -14,7 +14,6 @@ class Conv:
         self.b_gradient = np.zeros(out_channel)  # 相应存储b的梯度
         pad = 0
         self.pad = pad
-        # self.batchnorm = BatchNorm(out_channel)
 
     # 进行前向传播
     def forward(self, x):

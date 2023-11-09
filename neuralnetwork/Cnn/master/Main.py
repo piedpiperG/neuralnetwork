@@ -170,10 +170,10 @@ class Run:
 
 if __name__ == '__main__':
     # 定义超参数的不同组合
-    learning_rates = [0.001, 0.01, 0.1]
-    dropout_rates = [0.2, 0.3, 0.4]
+    learning_rates = [0.001, 0.01, 0.1, 0.05]
+    dropout_rates = [0.2, 0.3, 0.4, 0.6]
     epoch_nums = [2, 5]
-    batch_sizes = [1, 3, 10, 20]
+    batch_sizes = [1, 3, 5, 10, 30]
 
     # 为了绘制三维图表，我们需要把数据整理成三维坐标形式
     # 初始化坐标列表
