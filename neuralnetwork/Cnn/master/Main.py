@@ -108,7 +108,7 @@ class Run:
                 delta = batchnorm1.backward(delta, learning_rate)
                 conv1.backward(delta, learning_rate)
 
-                print("Epoch-{}-{:05d}".format(str(epoch), i), ":", "loss:{:.4f}".format(loss))
+                print("迭代-{}-{:05d}".format(str(epoch), i), ":", "损失值:{:.4f}".format(loss))
 
             learning_rate *= 0.95 ** (epoch + 1)
             np.savez("data2.npz", k1=conv1.k, b1=conv1.b, k2=conv2.k, b2=conv2.b, w3=link1.W, b3=link1.b,
@@ -164,7 +164,7 @@ class Run:
                 num += 1
                 print(f'{i + 1}:{num / (i + 1) * 100}')
 
-        print("TEST-ACC: ", num / size * 100, "%")
+        print("当前准确率: ", num / size * 100, "%")
         return num / size * 100
 
 
