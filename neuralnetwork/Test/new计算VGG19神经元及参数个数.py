@@ -25,10 +25,6 @@ for layer in vgg19.features:
         if isinstance(layer, torch.nn.Conv2d):
             cnt_conv += 1
             print(f'conv{cnt_conv}:{current_shape[0]} * {current_shape[1]} * {current_shape[2]}')
-        if isinstance(layer, torch.nn.MaxPool2d):
-            cnt_pool += 1
-            print(f'pool{cnt_pool}:{current_shape[0]} * {current_shape[1]} * {current_shape[2]}')
-
 
 # 遍历classifier模块计算全连接层的神经元数量
 for layer in vgg19.classifier:

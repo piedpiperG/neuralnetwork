@@ -16,8 +16,7 @@ def hook_function(module, input, output):
 
 # 注册钩子
 for layer in resnet152.modules():
-    if isinstance(layer, torch.nn.Conv2d) or isinstance(layer, torch.nn.Linear) or isinstance(layer,
-                                                                                              torch.nn.MaxPool2d):
+    if isinstance(layer, torch.nn.Conv2d) or isinstance(layer, torch.nn.Linear):
         layer.register_forward_hook(hook_function)
 
 # 假设输入，1x3x224x224
