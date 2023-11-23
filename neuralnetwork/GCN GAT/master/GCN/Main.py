@@ -7,7 +7,7 @@ from collections import defaultdict
 from scipy.sparse import csr_matrix
 import torch
 from torch_geometric.data import Data
-from Model import GCN, GAT
+from Model import GCN, GAT, TextCNN, TextLSTM
 import torch.optim as optim
 import torch.nn.functional as F
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -112,6 +112,27 @@ def test():
     return accs
 
 
+def train_cnn():
+    model.train()
+    optimizer.zero_grad()
+    out = model(texts_tensor)  # 使用处理过的文本序列
+    loss = F.cross_entropy(out[train_mask], labels_tensor[train_mask])
+    loss.backward()
+    optimizer.step()
+    return loss
+
+
+def test_cnn():
+    model.eval()
+    logits = model(texts_tensor)  # 使用处理过的文本序列
+    accs = []
+    for mask in [train_mask, val_mask, test_mask]:
+        pred = logits[mask].max(1)[1]
+        acc = pred.eq(labels_tensor[mask]).sum().item() / mask.sum().item()
+        accs.append(acc)
+    return accs
+
+
 if __name__ == '__main__':
     # 加载文档数据
     # texts = load_dataset('data/r52.txt')
@@ -165,15 +186,47 @@ if __name__ == '__main__':
     num_classes = len(set(labels.numpy()))  # 类别数
 
     # 选择模型
-    # model = GCN(num_features=num_features, num_classes=num_classes)
-    model = GAT(num_features=num_features, num_classes=num_classes)
+    # GCN 图卷积网络
+    model = GCN(num_features=num_features, num_classes=num_classes)
+    # GAT 注意力
+    # model = GAT(num_features=num_features, num_classes=num_classes)
+
+    # CNN 卷积网络
+    # 设定最大序列长度
+    MAX_SEQUENCE_LENGTH = 500
+    # 获取整数序列和词汇表
+    texts_int_seq, word_index = tokenize_and_pad_texts(texts, MAX_SEQUENCE_LENGTH)
+    VOCAB_SIZE = len(word_index) + 1  # 加1因为索引0通常是填充符号
+    EMBEDDING_DIM = 100  # 可以根据需要调整
+    FILTER_SIZES = [3, 4, 5]  # 卷积核的大小
+    NUM_FILTERS = 100  # 每种大小的卷积核的数量
+    NUM_CLASSES = len(set(labels))  # 类别数
+    # 获取整数序列和词汇表
+    texts_tensor = torch.tensor(texts_int_seq, dtype=torch.long)  # 转换为 Tensor
+    # 加载标签
+    labels_tensor = torch.tensor(labels, dtype=torch.long)
+
+    # CNN模型加载
+    # model = TextCNN(VOCAB_SIZE, EMBEDDING_DIM, NUM_CLASSES, FILTER_SIZES, NUM_FILTERS)
+    # LSTM模型加载
+    HIDDEN_DIM = 128  # 隐藏层维度，可以调整
+    # model = TextLSTM(VOCAB_SIZE, EMBEDDING_DIM, HIDDEN_DIM, NUM_CLASSES)
 
     # 优化器
-    optimizer = optim.Adam(model.parameters(), lr=0.01)
-    # 训练和测试循环保持不变
+    optimizer = optim.Adam(model.parameters(), lr=0.1)
+
+    # GCN和GAT的训练和测试循环
     for epoch in range(200):
         loss = train()
         torch.cuda.empty_cache()  # 清理 GPU 缓存
         train_acc, val_acc, test_acc = test()
         print(
             f'Epoch: {epoch + 1:03d}, Loss: {loss:.4f}, Train: {train_acc:.4f}, Val: {val_acc:.4f}, Test: {test_acc:.4f}')
+
+    # # CNN的训练和测试循环
+    # for epoch in range(200):
+    #     loss = train_cnn()
+    #     torch.cuda.empty_cache()  # 清理 GPU 缓存
+    #     train_acc, val_acc, test_acc = test_cnn()
+    #     print(
+    #         f'Epoch: {epoch + 1:03d}, Loss: {loss:.4f}, Train: {train_acc:.4f}, Val: {val_acc:.4f}, Test: {test_acc:.4f}')
