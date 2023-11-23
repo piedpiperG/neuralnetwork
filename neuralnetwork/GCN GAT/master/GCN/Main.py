@@ -12,6 +12,8 @@ import torch.optim as optim
 import torch.nn.functional as F
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+from keras.preprocessing.text import Tokenizer
+from keras.preprocessing.sequence import pad_sequences
 import os
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -72,6 +74,20 @@ def load_labels(file_path):
     # 将标签转换为对应的整数
     labels = [label_map[label] for label in labels]
     return labels, label_map
+
+
+def tokenize_and_pad_texts(texts, max_len=500):
+    # 创建并训练分词器
+    tokenizer = Tokenizer()
+    tokenizer.fit_on_texts(texts)
+
+    # 将文本转换为整数序列
+    sequences = tokenizer.texts_to_sequences(texts)
+
+    # 填充序列以获得统一的长度
+    padded_sequences = pad_sequences(sequences, maxlen=max_len, padding='post')
+
+    return padded_sequences, tokenizer.word_index
 
 
 # 训练
