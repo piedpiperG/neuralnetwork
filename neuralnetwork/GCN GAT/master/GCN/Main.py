@@ -1,6 +1,7 @@
 import pickle
 import re
 import numpy as np
+from matplotlib import pyplot as plt
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from collections import defaultdict
@@ -133,6 +134,28 @@ def test_cnn():
     return accs
 
 
+def plot_training_results(train_losses, train_accuracies, val_accuracies, test_accuracies):
+    # 绘制损失图
+    plt.figure(figsize=(10, 5))
+    plt.plot(train_losses, label='Training Loss')
+    plt.title("Training Loss per Epoch")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.legend()
+    plt.show()
+
+    # 绘制准确率图
+    plt.figure(figsize=(10, 5))
+    plt.plot(train_accuracies, label='Training Accuracy')
+    plt.plot(val_accuracies, label='Validation Accuracy')
+    plt.plot(test_accuracies, label='Test Accuracy')
+    plt.title("Accuracy per Epoch")
+    plt.xlabel("Epoch")
+    plt.ylabel("Accuracy")
+    plt.legend()
+    plt.show()
+
+
 if __name__ == '__main__':
     # 加载文档数据
     # texts = load_dataset('data/r52.txt')
@@ -150,17 +173,7 @@ if __name__ == '__main__':
         # 保存清理过的文本数据到文件
         with open(CLEANED_TEXTS_FILE, 'wb') as f:
             pickle.dump(texts, f)
-    # 构建特征矩阵
-    feature_matrix = build_feature_matrix(texts)
-    # 构建邻接矩阵
-    adjacency_matrix = build_adjacency_matrix2(feature_matrix)
-    # 转换邻接矩阵为 COO 格式的边索引
-    edge_index = torch.tensor(np.array(adjacency_matrix.nonzero()), dtype=torch.long)
-    # 加载标签并转换为 Tensor
-    labels, label_map = load_labels(f'data/{FILE_NAME}-label.txt')
-    labels = torch.tensor(labels, dtype=torch.long)
-    # 构建数据对象
-    data = Data(x=torch.tensor(feature_matrix, dtype=torch.float), edge_index=edge_index, y=labels)
+    # 划分数据集
     # 假设 N 是文档的总数
     N = len(texts)
     # 生成随机索引来划分训练、验证和测试集
@@ -176,6 +189,20 @@ if __name__ == '__main__':
     train_mask[indices[:train_size]] = True
     val_mask[indices[train_size:train_size + val_size]] = True
     test_mask[indices[train_size + val_size:]] = True
+
+    # GCN,GAT构建
+    # 构建特征矩阵
+    feature_matrix = build_feature_matrix(texts)
+    # 构建邻接矩阵
+    adjacency_matrix = build_adjacency_matrix2(feature_matrix)
+    # 转换邻接矩阵为 COO 格式的边索引
+    edge_index = torch.tensor(np.array(adjacency_matrix.nonzero()), dtype=torch.long)
+    # 加载标签并转换为 Tensor
+    labels, label_map = load_labels(f'data/{FILE_NAME}-label.txt')
+    labels = torch.tensor(labels, dtype=torch.long)
+    # 构建数据对象
+    data = Data(x=torch.tensor(feature_matrix, dtype=torch.float), edge_index=edge_index, y=labels)
+
     # 将掩码添加到数据对象中
     data.train_mask = train_mask
     data.val_mask = val_mask
@@ -212,6 +239,11 @@ if __name__ == '__main__':
     HIDDEN_DIM = 128  # 隐藏层维度，可以调整
     # model = TextLSTM(VOCAB_SIZE, EMBEDDING_DIM, HIDDEN_DIM, NUM_CLASSES)
 
+    # 用于保存损失和准确率的列表
+    train_losses = []
+    train_accuracies = []
+    val_accuracies = []
+    test_accuracies = []
     # 优化器
     optimizer = optim.Adam(model.parameters(), lr=0.1)
 
@@ -220,6 +252,13 @@ if __name__ == '__main__':
         loss = train()
         torch.cuda.empty_cache()  # 清理 GPU 缓存
         train_acc, val_acc, test_acc = test()
+
+        # 保存数据
+        train_losses.append(loss.item())
+        train_accuracies.append(train_acc)
+        val_accuracies.append(val_acc)
+        test_accuracies.append(test_acc)
+
         print(
             f'Epoch: {epoch + 1:03d}, Loss: {loss:.4f}, Train: {train_acc:.4f}, Val: {val_acc:.4f}, Test: {test_acc:.4f}')
 
@@ -228,5 +267,14 @@ if __name__ == '__main__':
     #     loss = train_cnn()
     #     torch.cuda.empty_cache()  # 清理 GPU 缓存
     #     train_acc, val_acc, test_acc = test_cnn()
+
+    #      # 保存数据
+    #     train_losses.append(loss.item())
+    #     train_accuracies.append(train_acc)
+    #     val_accuracies.append(val_acc)
+    #     test_accuracies.append(test_acc)
+
     #     print(
     #         f'Epoch: {epoch + 1:03d}, Loss: {loss:.4f}, Train: {train_acc:.4f}, Val: {val_acc:.4f}, Test: {test_acc:.4f}')
+    plot_training_results(train_losses, train_accuracies, val_accuracies, test_accuracies)
+    torch.save(model, 'model/model_GCN.pth')
