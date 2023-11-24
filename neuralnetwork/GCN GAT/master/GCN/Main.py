@@ -15,6 +15,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
+from sklearn.metrics import precision_score, recall_score, f1_score
 import os
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -106,11 +107,22 @@ def train():
 def test():
     model.eval()
     logits, accs = model(data), []
+    all_preds, all_labels = [], []
+
     for _, mask in data('train_mask', 'val_mask', 'test_mask'):
         pred = logits[mask].max(1)[1]
+
+        all_preds.extend(pred.tolist())
+        all_labels.extend(data.y[mask].tolist())
+
         acc = pred.eq(data.y[mask]).sum().item() / mask.sum().item()
         accs.append(acc)
-    return accs
+
+    precision = precision_score(all_labels, all_preds, average='macro', zero_division=0)
+    recall = recall_score(all_labels, all_preds, average='macro', zero_division=0)
+    f1 = f1_score(all_labels, all_preds, average='macro', zero_division=0)
+
+    return accs, precision, recall, f1
 
 
 def train_cnn():
@@ -127,11 +139,20 @@ def test_cnn():
     model.eval()
     logits = model(texts_tensor)  # 使用处理过的文本序列
     accs = []
+    all_preds, all_labels = [], []
     for mask in [train_mask, val_mask, test_mask]:
         pred = logits[mask].max(1)[1]
+
+        all_preds.extend(pred.tolist())
+        all_labels.extend(data.y[mask].tolist())
+
         acc = pred.eq(labels_tensor[mask]).sum().item() / mask.sum().item()
         accs.append(acc)
-    return accs
+
+    precision = precision_score(all_labels, all_preds, average='macro', zero_division=0)
+    recall = recall_score(all_labels, all_preds, average='macro', zero_division=0)
+    f1 = f1_score(all_labels, all_preds, average='macro', zero_division=0)
+    return accs, precision, recall, f1
 
 
 def plot_training_results(train_losses, train_accuracies, val_accuracies, test_accuracies):
@@ -159,7 +180,7 @@ def plot_training_results(train_losses, train_accuracies, val_accuracies, test_a
 if __name__ == '__main__':
     # 加载文档数据
     # texts = load_dataset('data/r52.txt')
-    FILE_NAME = 'r52'
+    FILE_NAME = 'r8'
     CLEANED_TEXTS_FILE = f'data/{FILE_NAME}-clean.pkl'  # 定义保存清理过的文本数据的文件名
     # 加载或保存清理后的文本数据
     if os.path.exists(CLEANED_TEXTS_FILE):
@@ -214,13 +235,13 @@ if __name__ == '__main__':
 
     # 选择模型
     # GCN 图卷积网络
-    model = GCN(num_features=num_features, num_classes=num_classes)
+    # model = GCN(num_features=num_features, num_classes=num_classes)
     # GAT 注意力
     # model = GAT(num_features=num_features, num_classes=num_classes)
 
     # CNN 卷积网络
     # 设定最大序列长度
-    MAX_SEQUENCE_LENGTH = 500
+    MAX_SEQUENCE_LENGTH = 50
     # 获取整数序列和词汇表
     texts_int_seq, word_index = tokenize_and_pad_texts(texts, MAX_SEQUENCE_LENGTH)
     VOCAB_SIZE = len(word_index) + 1  # 加1因为索引0通常是填充符号
@@ -234,7 +255,7 @@ if __name__ == '__main__':
     labels_tensor = torch.tensor(labels, dtype=torch.long)
 
     # CNN模型加载
-    # model = TextCNN(VOCAB_SIZE, EMBEDDING_DIM, NUM_CLASSES, FILTER_SIZES, NUM_FILTERS)
+    model = TextCNN(VOCAB_SIZE, EMBEDDING_DIM, NUM_CLASSES, FILTER_SIZES, NUM_FILTERS)
     # LSTM模型加载
     HIDDEN_DIM = 128  # 隐藏层维度，可以调整
     # model = TextLSTM(VOCAB_SIZE, EMBEDDING_DIM, HIDDEN_DIM, NUM_CLASSES)
@@ -245,13 +266,28 @@ if __name__ == '__main__':
     val_accuracies = []
     test_accuracies = []
     # 优化器
-    optimizer = optim.Adam(model.parameters(), lr=0.1)
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
 
     # GCN和GAT的训练和测试循环
+    # for epoch in range(200):
+    #     loss = train()
+    #     torch.cuda.empty_cache()  # 清理 GPU 缓存
+    #     (train_acc, val_acc, test_acc), precision, recall, f1 = test()
+    #
+    #     # 保存数据
+    #     train_losses.append(loss.item())
+    #     train_accuracies.append(train_acc)
+    #     val_accuracies.append(val_acc)
+    #     test_accuracies.append(test_acc)
+    #
+    #     print(
+    #         f'Epoch: {epoch + 1:03d}, Loss: {loss:.4f}, Train: {train_acc:.4f}, Val: {val_acc:.4f}, Test: {test_acc:.4f}')
+    #     print(f'Epoch: {epoch + 1:03d}, Precision: {precision:.4f}, Recall: {recall:.4f}, F1 Score: {f1:.4f}')
+    # CNN的训练和测试循环
     for epoch in range(200):
-        loss = train()
+        loss = train_cnn()
         torch.cuda.empty_cache()  # 清理 GPU 缓存
-        train_acc, val_acc, test_acc = test()
+        (train_acc, val_acc, test_acc), precision, recall, f1 = test_cnn()
 
         # 保存数据
         train_losses.append(loss.item())
@@ -261,20 +297,6 @@ if __name__ == '__main__':
 
         print(
             f'Epoch: {epoch + 1:03d}, Loss: {loss:.4f}, Train: {train_acc:.4f}, Val: {val_acc:.4f}, Test: {test_acc:.4f}')
-
-    # # CNN的训练和测试循环
-    # for epoch in range(200):
-    #     loss = train_cnn()
-    #     torch.cuda.empty_cache()  # 清理 GPU 缓存
-    #     train_acc, val_acc, test_acc = test_cnn()
-
-    #      # 保存数据
-    #     train_losses.append(loss.item())
-    #     train_accuracies.append(train_acc)
-    #     val_accuracies.append(val_acc)
-    #     test_accuracies.append(test_acc)
-
-    #     print(
-    #         f'Epoch: {epoch + 1:03d}, Loss: {loss:.4f}, Train: {train_acc:.4f}, Val: {val_acc:.4f}, Test: {test_acc:.4f}')
+        print(f'Epoch: {epoch + 1:03d}, Precision: {precision:.4f}, Recall: {recall:.4f}, F1 Score: {f1:.4f}')
     plot_training_results(train_losses, train_accuracies, val_accuracies, test_accuracies)
-    torch.save(model, 'model/model_GCN.pth')
+    torch.save(model, 'model/model_CNN.pth')
