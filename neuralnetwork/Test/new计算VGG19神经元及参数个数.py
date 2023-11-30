@@ -18,7 +18,7 @@ cnt_link = 0
 for layer in vgg19.features:
     input_tensor = layer(input_tensor)
     # 仅计算卷积层和池化层的神经元数量
-    if isinstance(layer, (torch.nn.Conv2d, torch.nn.MaxPool2d)):
+    if isinstance(layer, (torch.nn.Conv2d)):
         # 特征图的尺寸: 通道数 x 宽度 x 高度
         current_shape = input_tensor.shape[1:]
         neurons += current_shape[0] * current_shape[1] * current_shape[2]
