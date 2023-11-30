@@ -98,6 +98,6 @@ files_list = find_files('../data/*.txt')
 all_categories, category_lines = read_lines(files_list)
 
 # 将txt文件中的类别提取出来,返回一个列表
-print(all_categories)
+# print(all_categories)
 # 构建字典，每一个类别对应一个名字列表
-print(category_lines)
+# print(category_lines)
