@@ -74,6 +74,15 @@ def input_to_tensor(input):
     return tensor.to(device)
 
 
+# 修改预处理函数，生成反向序列
+def input_to_tensor_reverse(input_line):
+    tensor = torch.zeros(len(input_line), 1, n_letters)
+    for li in range(len(input_line)):
+        letter = input_line[-li - 1]  # 反向索引
+        tensor[li][0][all_letters.find(letter)] = 1
+    return tensor
+
+
 def target_to_tensor(input):
     """
     对目标输出进行one-hot编码，即为从第二个字母开始至结束字母的索引，以及EOS的索引
@@ -85,9 +94,13 @@ def target_to_tensor(input):
     return torch.LongTensor(letter_indexes).to(device)
 
 
-def random_training_example():
+def random_training_example(mode=1):
     category = random_choice(all_categories)
     input = random_choice(category_lines[category])
+
+    if mode == -1:
+        input = input[::-1]  # 反转输入字符串
+
     category_tensor = category_to_tensor(category)
     input_tensor = input_to_tensor(input)
     target_tensor = target_to_tensor(input)

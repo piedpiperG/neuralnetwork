@@ -5,7 +5,7 @@ import torch
 from matplotlib import pyplot as plt
 from torch import nn
 from model import RNN
-from utils import random_training_example, category_to_tensor, input_to_tensor
+from utils import random_training_example, category_to_tensor, input_to_tensor, input_to_tensor_reverse
 from static import n_categories, n_letters, all_letters, device
 
 n_hidden = 128
@@ -48,7 +48,53 @@ def train():
             all_losses.append(total_loss / 500)
             total_loss = 0
 
-    torch.save(rnn.state_dict(), 'rnn_params.pkl')  # 保存模型的数据
+    torch.save(rnn.state_dict(), '../model/rnn_params.pkl')  # 保存模型的数据
+
+    plt.figure()
+    plt.plot(all_losses)
+    plt.show()
+
+
+def train_reverse():
+    rnn = RNN(n_letters, n_hidden, n_letters).to(device)
+
+    loss = nn.NLLLoss()
+    total_loss = 0
+    all_losses = []
+    epoch_num = 100000
+    lr = 0.0005
+    epoch_start_time = time.time()
+
+    for epoch in range(epoch_num):
+        rnn.zero_grad()
+        train_loss = 0
+        hidden = rnn.init_hidden()
+
+        category_tensor, input_tensor, target_tensor = random_training_example(-1)
+        target_tensor.unsqueeze_(-1)
+
+        for i in range(input_tensor.size()[0]):
+            output, hidden = rnn(category_tensor, input_tensor[i], hidden)
+            train_loss += loss(output, target_tensor[i])  # 计算每次的损失
+
+        train_loss.backward()
+
+        for p in rnn.parameters():
+            p.data.add_(p.grad.data, alpha=-lr)
+
+        total_loss += train_loss.item() / input_tensor.size()[0]  # 计算该名字的平均损失
+
+        if epoch % 5000 == 0:
+            print('[%05d/%03d%%] %2.2f sec(s) Loss: %.4f' %
+                  (epoch, epoch / epoch_num * 100, time.time() - epoch_start_time,
+                   train_loss.item() / input_tensor.size()[0]))
+            epoch_start_time = time.time()
+
+        if (epoch + 1) % 500 == 0:
+            all_losses.append(total_loss / 500)
+            total_loss = 0
+
+    torch.save(rnn.state_dict(), '../model/rnn_params_reverse.pkl')  # 保存反向训练的模型数据
 
     plt.figure()
     plt.plot(all_losses)
@@ -57,7 +103,7 @@ def train():
 
 def predict(category, start_letter):
     rnn = RNN(n_letters, n_hidden, n_letters).to(device)
-    rnn.load_state_dict(torch.load('rnn_params.pkl'))  # 加载模型训练所得到的参数
+    rnn.load_state_dict(torch.load('../model/rnn_params.pkl'))  # 加载模型训练所得到的参数
     max_length = 20  # 名字的最大长度
     with torch.no_grad():
         category_tensor = category_to_tensor(category)
@@ -81,6 +127,35 @@ def predict(category, start_letter):
                 output_name += letter
             input = input_to_tensor(letter)  # 更新input，继续循环迭代
     return output_name, top5_each_step
+
+
+def predict_reverse(category, end_letters):
+    rnn = RNN(n_letters, n_hidden, n_letters).to(device)
+    rnn.load_state_dict(torch.load('../model/rnn_params_reverse.pkl'))  # 加载反向训练的模型
+    max_length = 20
+
+    with torch.no_grad():
+        category_tensor = category_to_tensor(category)
+        input = input_to_tensor_reverse(end_letters)
+        hidden = rnn.init_hidden()
+
+        output_name = end_letters[::-1]
+        top5_each_step = []  # 用于存储每步的前5个字符及其概率
+
+        for i in range(max_length - len(end_letters)):
+            output, hidden = rnn(category_tensor, input[0], hidden)
+            topv, topi = output.topk(5)
+            top5_each_step.append((topi, topv))
+
+            topi = topi[0][0]
+            if topi == n_letters - 1:
+                break
+            else:
+                letter = all_letters[topi]
+                output_name += letter
+            input = input_to_tensor_reverse(letter)
+
+        return output_name[::-1], top5_each_step
 
 
 def plot_predictions(top5_each_step):
