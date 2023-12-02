@@ -4,13 +4,16 @@ import numpy as np
 import torch
 from matplotlib import pyplot as plt
 from torch import nn
-from model import RNN
-from utils import random_training_example, category_to_tensor, input_to_tensor, input_to_tensor_reverse
+import torch.optim as optim
+from model import RNN, BiRNN
+from utils import random_training_example, category_to_tensor, input_to_tensor, input_to_tensor_reverse, \
+    create_training_samples, target_to_tensor, letter_to_tensor
 from static import n_categories, n_letters, all_letters, device
 
 n_hidden = 128
 
 
+# 前向训练函数
 def train():
     rnn = RNN(n_letters, n_hidden, n_letters).to(device)
 
@@ -55,6 +58,36 @@ def train():
     plt.show()
 
 
+# 前向预测函数
+def predict(category, start_letter):
+    rnn = RNN(n_letters, n_hidden, n_letters).to(device)
+    rnn.load_state_dict(torch.load('../model/rnn_params.pkl'))  # 加载模型训练所得到的参数
+    max_length = 20  # 名字的最大长度
+    with torch.no_grad():
+        category_tensor = category_to_tensor(category)
+        input = input_to_tensor(start_letter)
+        hidden = rnn.init_hidden()
+
+        output_name = start_letter
+        top5_each_step = []  # 用于存储每步的前5个字符及其概率
+
+        for i in range(max_length):
+            output, hidden = rnn(category_tensor, input[0], hidden)
+            top_v, top_i = output.topk(5)  # 选出最大的值，返回其value和index
+
+            top5_each_step.append((top_i, top_v))
+
+            top_i = top_i[0][0].item()
+            if top_i == n_letters - 1:  # n-letters-1是EOS
+                break
+            else:
+                letter = all_letters[top_i]
+                output_name += letter
+            input = input_to_tensor(letter)  # 更新input，继续循环迭代
+    return output_name, top5_each_step
+
+
+# 反向训练函数
 def train_reverse():
     rnn = RNN(n_letters, n_hidden, n_letters).to(device)
 
@@ -101,34 +134,7 @@ def train_reverse():
     plt.show()
 
 
-def predict(category, start_letter):
-    rnn = RNN(n_letters, n_hidden, n_letters).to(device)
-    rnn.load_state_dict(torch.load('../model/rnn_params.pkl'))  # 加载模型训练所得到的参数
-    max_length = 20  # 名字的最大长度
-    with torch.no_grad():
-        category_tensor = category_to_tensor(category)
-        input = input_to_tensor(start_letter)
-        hidden = rnn.init_hidden()
-
-        output_name = start_letter
-        top5_each_step = []  # 用于存储每步的前5个字符及其概率
-
-        for i in range(max_length):
-            output, hidden = rnn(category_tensor, input[0], hidden)
-            top_v, top_i = output.topk(5)  # 选出最大的值，返回其value和index
-
-            top5_each_step.append((top_i, top_v))
-
-            top_i = top_i[0][0].item()
-            if top_i == n_letters - 1:  # n-letters-1是EOS
-                break
-            else:
-                letter = all_letters[top_i]
-                output_name += letter
-            input = input_to_tensor(letter)  # 更新input，继续循环迭代
-    return output_name, top5_each_step
-
-
+# 反向预测函数
 def predict_reverse(category, end_letters):
     rnn = RNN(n_letters, n_hidden, n_letters).to(device)
     rnn.load_state_dict(torch.load('../model/rnn_params_reverse.pkl'))  # 加载反向训练的模型
@@ -156,6 +162,104 @@ def predict_reverse(category, end_letters):
             input = input_to_tensor_reverse(letter)
 
         return output_name[::-1], top5_each_step
+
+
+# 部分训练函数
+def train_partial():
+    # 初始化模型、损失函数和优化器
+    model = BiRNN(n_letters, 128, n_letters).to(device)
+    loss = nn.CrossEntropyLoss()
+    optimizer = optim.SGD(model.parameters(), lr=0.005)
+
+    # 训练参数
+    total_loss = 0
+    all_losses = []
+    n_iters = 100000
+    print_every = 5000
+    plot_every = 1000
+    current_loss = 0
+
+    # 记录训练开始时间
+    epoch_start_time = time.time()
+
+    for epoch in range(1, n_iters + 1):
+        train_loss = 0
+        line = random_training_example(-2)
+        samples = create_training_samples(line)
+
+        for partial_name, full_name in samples:
+            input_tensor = input_to_tensor(partial_name).to(device)
+            input_tensor = input_tensor.type(torch.LongTensor).to(device)  # 类型转换为 LongTensor 并移至设备
+            target_tensor = target_to_tensor(full_name).to(device)
+            target_tensor = target_tensor.to(device)  # 确保target_tensor已经是 LongTensor
+            # target_tensor = target_tensor.squeeze()  # 将多余的维度去除，保留 1 维
+            target_tensor = target_tensor.unsqueeze(-1)
+
+            # 单次训练迭代
+            model.train()
+            optimizer.zero_grad()
+            output = model(input_tensor)
+            # 使用 torch.squeeze() 去除中间的维度
+            output = output[:, 0, :]
+
+            print(f'output:{output.size()}')
+            print(f'target:{target_tensor.size()}')
+            for i in range(input_tensor.size()[0]):
+                print(target_tensor[i].size())
+                train_loss += loss(output, target_tensor[i])
+
+            train_loss.backward()
+            optimizer.step()
+            total_loss += train_loss
+
+        if epoch % print_every == 0:
+            print(
+                f'[{iter}/{n_iters}] {time.time() - epoch_start_time:.2f} sec(s) Loss: {total_loss / print_every:.4f}')
+            total_loss = 0
+
+        if epoch % plot_every == 0:
+            all_losses.append(current_loss / plot_every)
+            current_loss = 0
+    # 保存模型
+    torch.save(model.state_dict(), '../model/rnn_params_partial.pkl')
+
+    # 绘制损失曲线
+    plt.figure()
+    plt.plot(all_losses)
+    plt.show()
+
+
+# 部分预测函数
+def predict_partial(category, start_letters):
+    max_length = 20
+    # 加载双向RNN模型
+    model = BiRNN(n_letters, 128, n_letters).to(device)
+    model.load_state_dict(torch.load('../model/rnn_params_partial.pkl'))
+    model.eval()
+
+    with torch.no_grad():
+        category_tensor = category_to_tensor(category).to(device)
+        input_tensor = input_to_tensor(start_letters).to(device)
+
+        output_name = start_letters
+        top5_each_step = []  # 存储每步的前5个字符及其概率
+
+        for i in range(max_length):
+            output = model(input_tensor)
+            topv, topi = output[-1].topk(5)  # 选择最大的5个值
+
+            top5 = [(all_letters[idx], prob.item()) for idx, prob in zip(topi[0], topv[0])]
+            top5_each_step.append(top5)
+
+            topi = topi[0][0]  # 选择概率最高的字符
+            if topi == n_letters - 1:  # EOS标记
+                break
+            else:
+                letter = all_letters[topi]
+                output_name += letter
+                input_tensor = torch.cat((input_tensor, letter_to_tensor(letter).to(device)), 0)
+
+        return output_name, top5_each_step
 
 
 def plot_predictions(top5_each_step):

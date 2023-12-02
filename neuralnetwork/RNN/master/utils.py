@@ -100,11 +100,29 @@ def random_training_example(mode=1):
 
     if mode == -1:
         input = input[::-1]  # 反转输入字符串
+    elif mode == -2:
+        return input
 
     category_tensor = category_to_tensor(category)
     input_tensor = input_to_tensor(input)
     target_tensor = target_to_tensor(input)
     return category_tensor, input_tensor, target_tensor
+
+
+# 将一个姓名切成部分，用于用部分来训练整体
+def create_training_samples(name):
+    samples = []
+    for start in range(len(name)):
+        for end in range(start + 1, len(name) + 1):
+            part = name[start:end]
+            samples.append((part, name))
+    return samples
+
+
+def letter_to_tensor(letter):
+    tensor = torch.zeros(1, n_letters)
+    tensor[0][all_letters.find(letter)] = 1
+    return tensor
 
 
 files_list = find_files('../data/*.txt')
@@ -114,3 +132,5 @@ all_categories, category_lines = read_lines(files_list)
 # print(all_categories)
 # 构建字典，每一个类别对应一个名字列表
 # print(category_lines)
+# print(create_training_samples('Allen'))
+# print(random_training_example(-2))

@@ -27,3 +27,30 @@ class RNN(nn.Module):
 
     def init_hidden(self):  # 隐藏层初始化0操作
         return torch.zeros(1, self.hidden_size).to(device)
+
+
+# 用于双向生成名字的双向RNN
+class BiRNN(nn.Module):
+    def __init__(self, input_size, hidden_size, output_size, n_layers=1):
+        super(BiRNN, self).__init__()
+        self.hidden_size = hidden_size
+        self.n_layers = n_layers
+
+        self.embedding = nn.Embedding(input_size, hidden_size)
+        self.lstm = nn.LSTM(hidden_size, hidden_size, n_layers, bidirectional=True)
+        self.fc = nn.Linear(hidden_size * 2, output_size)
+
+    def forward(self, input):
+        # 输入的维度: [sequence length, batch size]
+        # 调整输入张量的形状以匹配嵌入层的期望
+        input = input.squeeze(1)  # 移除批次大小的维度，假设批次大小为1
+        embedded = self.embedding(input)  # 嵌入层
+
+        # embedded的维度: [sequence length, batch size, hidden size]
+        lstm_out, _ = self.lstm(embedded)  # 双向LSTM层
+
+        # lstm_out的维度: [sequence length, batch size, hidden size * 2]
+        out = self.fc(lstm_out)  # 全连接层
+
+        # out的维度: [sequence length, batch size, output size]
+        return out
