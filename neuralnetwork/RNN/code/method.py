@@ -234,7 +234,7 @@ def predict_partial(category, start_letters):
     max_length = 20
     # 加载双向RNN模型
     model = BiRNN(n_letters, 128, n_letters).to(device)
-    model.load_state_dict(torch.load('../model/rnn_params_partial.pkl'))
+    model.load_state_dict(torch.load('../model/rnn_params_reverse.pkl'))
     model.eval()
 
     with torch.no_grad():
@@ -260,6 +260,60 @@ def predict_partial(category, start_letters):
                 input_tensor = torch.cat((input_tensor, letter_to_tensor(letter).to(device)), 0)
 
         return output_name, top5_each_step
+
+
+def predict_prefix(model_reverse, category, middle_chars):
+    max_length = 4
+    with torch.no_grad():
+        category_tensor = category_to_tensor(category)
+        input = input_to_tensor_reverse(middle_chars)  # 注意：使用了反转的输入
+        hidden = model_reverse.init_hidden()
+
+        output_prefix = ''
+        for i in range(max_length):
+            output, hidden = model_reverse(category_tensor, input[0], hidden)
+            topi = output.topk(1)[1].item()
+            if topi == n_letters - 1:  # or i == len(middle_chars) - 1:  # EOS或达到中间字符长度
+                break
+            else:
+                letter = all_letters[topi]
+                output_prefix += letter
+            input = input_to_tensor_reverse(letter)
+
+        return output_prefix[::-1]  # 反转前缀以恢复正确的顺序
+
+
+def predict_suffix(model, category, middle_chars):
+    max_length = 4
+    with torch.no_grad():
+        category_tensor = category_to_tensor(category)
+        input = input_to_tensor(middle_chars)
+        hidden = model.init_hidden()
+
+        output_suffix = middle_chars
+        for i in range(max_length):
+            output, hidden = model(category_tensor, input[0], hidden)
+            topi = output.topk(1)[1].item()
+            if topi == n_letters - 1:  # EOS
+                break
+            else:
+                letter = all_letters[topi]
+                output_suffix += letter
+            input = input_to_tensor(output_suffix)
+
+        return output_suffix[len(middle_chars):]  # 只返回后缀部分
+
+
+def predict_full_name(category, middle_chars):
+    model = RNN(n_letters, n_hidden, n_letters).to(device)
+    model.load_state_dict(torch.load('../model/rnn_params.pkl'))  # 加载前向模型
+    model_reverse = RNN(n_letters, n_hidden, n_letters).to(device)
+    model_reverse.load_state_dict(torch.load('../model/rnn_params_reverse.pkl'))  # 加载反向模型
+
+    prefix = predict_prefix(model_reverse, category, middle_chars)
+    suffix = predict_suffix(model, category, middle_chars)
+
+    return prefix + middle_chars + suffix, prefix, middle_chars, suffix
 
 
 def plot_predictions(top5_each_step):
