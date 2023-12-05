@@ -1,10 +1,11 @@
 import string
-
-from torch.utils.data import Dataset
+import torch
+from torch.utils.data import Dataset, DataLoader
 from PIL import Image
 import json
 import os
 import numpy as np
+from torch.nn.utils.rnn import pad_sequence
 
 
 def load_word_vectors(filename):
@@ -49,16 +50,24 @@ class ImageTextDataset(Dataset):
         image_name, description = list(self.descriptions.items())[idx]
         image_path = os.path.join(self.image_folder_path, image_name)
         image = Image.open(image_path)
-        image = np.array(image)  # 将图像转换为NumPy数组
+        image = np.array(image)
+        image = torch.from_numpy(image)  # 转换图像为Tensor
         description_vectors = text_to_vectors(description, self.word_vectors)
+        return {'image': image, 'description_vectors': description_vectors}
 
-        return {'image': image, 'description_vectors': description_vectors, 'description': description}
+
+def collate_fn(batch):
+    images = [item['image'] for item in batch]
+    descriptions = [torch.tensor(item['description_vectors'], dtype=torch.float32) for item in batch]
+    descriptions_padded = pad_sequence(descriptions, batch_first=True, padding_value=0)
+    images = torch.stack(images, dim=0)  # 现在images是Tensor列表
+    return {'image': images, 'description_vectors': descriptions_padded}
 
 
 # 使用示例
 json_file_path = 'word2vec/test_captions.json'  # 替换为您的JSON文件路径
 image_folder_path = 'E:\杂项下载\课设数据集\images'  # 替换为您的图片文件夹路径
 dataset = ImageTextDataset(json_file_path, image_folder_path, word_vectors)
-
-sample = dataset[0]
-print(sample['image'].shape, sample['description_vectors'], sample['description'])  # 输出第一个样本的图像形状和描述
+dataloader = DataLoader(dataset, batch_size=4, collate_fn=collate_fn)
+for batch in dataloader:
+    print(batch['image'], batch['description_vectors'])
