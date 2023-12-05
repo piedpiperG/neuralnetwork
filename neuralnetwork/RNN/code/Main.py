@@ -1,9 +1,11 @@
 from method import *
 
+alphabet_list = [chr(i) for i in range(ord('A'), ord('Z') + 1)]
+alphabet_list_re = [chr(i) for i in range(ord('a'), ord('z') + 1)]
+res = []
+
 # 进行正向的训练
 # train()
-# alphabet_list = [chr(i) for i in range(ord('A'), ord('Z') + 1)]
-# res = []
 # for alpha in alphabet_list:
 #     output_name, top5_each_step = predict('male', alpha)
 #     res.append(output_name)
@@ -12,9 +14,12 @@ from method import *
 # plot_predictions(top5_each_step)
 
 # 进行反向的训练
-# # # train_reverse()
-# output_name_reverse, top5_each_step_reverse = predict_reverse('male', 'ak')
-# print(output_name_reverse)
+# train_reverse()
+# for alpha in alphabet_list:
+#     output_name_reverse, top5_each_step_reverse = predict_reverse_re('female', alpha)
+#     res.append(output_name_reverse)
+#     print(output_name_reverse)
+# print(res)
 # plot_predictions(top5_each_step_reverse)
 
 # 生成从中间开始的名字
