@@ -27,7 +27,15 @@ def text_to_vectors(text, word_vectors):
     # 转换为小写并移除标点
     text = text.lower().translate(str.maketrans('', '', string.punctuation))
     words = text.split()
-    vectors = [word_vectors.get(word, np.zeros(len(next(iter(word_vectors.values()))))) for word in words]
+    # 获取词向量的维度
+    vector_dim = len(next(iter(word_vectors.values())))
+
+    # 创建开始符和结束符的词向量
+    start_vector = np.ones(vector_dim)
+    end_vector = np.full(vector_dim, 2)
+
+    # 将开始符、词向量、结束符合并
+    vectors = [start_vector] + [word_vectors.get(word, np.zeros(vector_dim)) for word in words] + [end_vector]
     return np.array(vectors)
 
 
@@ -49,19 +57,30 @@ class ImageTextDataset(Dataset):
     def __getitem__(self, idx):
         image_name, description = list(self.descriptions.items())[idx]
         image_path = os.path.join(self.image_folder_path, image_name)
+
+        # 加载图像并调整尺寸
         image = Image.open(image_path)
+        image = image.resize((750, 1101))  # 将图像大小调整为 750x1101
+
+        # 转换图像为numpy数组，然后转为Tensor
         image = np.array(image)
-        image = torch.from_numpy(image)  # 转换图像为Tensor
+        if image.shape[2] == 4:  # 检查是否有alpha通道
+            image = image[..., :3]  # 仅保留RGB通道
+        image = torch.from_numpy(image).permute(2, 0, 1)  # 转换为CHW格式
+
+        # 处理文本描述
         description_vectors = text_to_vectors(description, self.word_vectors)
-        return {'image': image, 'description_vectors': description_vectors}
+
+        return {'image': image, 'description_vectors': description_vectors, 'description': description}
 
 
 def collate_fn(batch):
     images = [item['image'] for item in batch]
+    description = [item['description'] for item in batch]
     descriptions = [torch.tensor(item['description_vectors'], dtype=torch.float32) for item in batch]
     descriptions_padded = pad_sequence(descriptions, batch_first=True, padding_value=0)
     images = torch.stack(images, dim=0)  # 现在images是Tensor列表
-    return {'image': images, 'description_vectors': descriptions_padded}
+    return {'image': images, 'description_vectors': descriptions_padded, 'description': description}
 
 
 # 使用示例
@@ -70,4 +89,4 @@ image_folder_path = 'E:\杂项下载\课设数据集\images'  # 替换为您的�
 dataset = ImageTextDataset(json_file_path, image_folder_path, word_vectors)
 dataloader = DataLoader(dataset, batch_size=4, collate_fn=collate_fn)
 for batch in dataloader:
-    print(batch['image'], batch['description_vectors'])
+    print(batch['image'], batch['description_vectors'], batch['description'])
