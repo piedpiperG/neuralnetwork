@@ -50,6 +50,12 @@ def Rating_Canteen(file, category):
     return highest_rated_restaurant
 
 
+def analyze_rating_review_correlation(file):
+    # 计算评分和评论数量之间的相关系数
+    correlation = file['rating'].corr(file['reviews'])
+    return correlation
+
+
 if __name__ == '__main__':
     # 读取文件
     df = readfile()
@@ -76,7 +82,7 @@ if __name__ == '__main__':
 
     print('***********************************问题3***********************************')
     # 问题3：比较特定快餐连锁店的评分
-    chains = ['McDonald\'s', 'Burger King', 'Subway', 'Wendy\'s', 'KFC' 'Pizza Hut']
+    chains = ['McDonald\'s', 'Burger King', 'Subway', 'Wendy\'s', 'KFC', 'Pizza Hut']
     # 获取每个连锁店的平均评分
     chain_ratings = average_rating_for_chains(df, chains)
     # 找出评分最高和最低的连锁店
@@ -86,6 +92,19 @@ if __name__ == '__main__':
     print(f"评分最低的连锁店是: {lowest_rated_chain}，平均评分为: {chain_ratings[lowest_rated_chain]}")
 
     print('***********************************问题4***********************************')
-    highest_rated_restaurant = Rating_Canteen(df, 'Coffee & Tea')
+    highest_rated_restaurant = Rating_Canteen(df, 'Sandwiches')
     print(
-        f"评分最高的‘咖啡与茶’类别餐厅是：{highest_rated_restaurant['name']}，地址：{highest_rated_restaurant['address']}，评分：{highest_rated_restaurant['rating']}")
+        f"评分最高的‘ Sandwiches’类别餐厅是：{highest_rated_restaurant['name']}，地址：{highest_rated_restaurant['address']}，评分：{highest_rated_restaurant['rating']}")
+
+    print('***********************************额外问题***********************************')
+    # 额外问题：评分是否与评论数量相关？
+    correlation = analyze_rating_review_correlation(df)
+    print(f"评分与评论数量的相关系数为: {correlation}")
+
+    # 根据相关系数判断关系
+    if correlation > 0.5:
+        print("评分与评论数量有较强的正相关关系。")
+    elif correlation < -0.5:
+        print("评分与评论数量有较强的负相关关系。")
+    else:
+        print("评分与评论数量的相关性不明显。")
